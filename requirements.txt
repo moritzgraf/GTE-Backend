@@ -9,7 +9,6 @@ Pillow
 psycopg2-binary
 pytz==2018.3
 pyyaml==3.13
-
-pypolyhedron
-numpy
-wolframclient
+numpy==1.19.5
+pypolyhedron==0.3.3
+wolframclient==1.1.7
