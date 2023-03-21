@@ -1,0 +1,22 @@
+Nash Equilibria
+1:
+profile: P(A) == 0, P(B) == 1, P(a) == 0, P(b) == 1
+payoffs: 1, 1
+
+2:
+profile: P(A) == 1, P(B) == 0, 1/2 <= P(a) <= 1, P(b) == 1 - P(a)
+payoffs: P(a), 0
+
+
+Sequential Equilibria
+1:
+profile: P(A) == 0, P(B) == 1, P(a) == 0, P(b) == 1, B([A]|I1) == 0, B([B]|I1) == 1
+payoffs: 1, 1
+
+2:
+profile: P(A) == 1, P(B) == 0, 1/2 <= P(a) <= 1, P(b) == 1 - P(a), B([A]|I1) == 1, B([B]|I1) == 0
+payoffs: P(a), 0
+
+
+Informationsets:
+I1: [A], [B]
