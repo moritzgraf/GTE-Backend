@@ -1,6 +1,3 @@
 
 Connected component 1:
-{1}  x  {1, 2}
-
-Connected component 2:
-{2}  x  {3}
+{1}  x  {1}

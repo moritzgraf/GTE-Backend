@@ -61,6 +61,9 @@ class Game:
             s = ""
             if long:
                 for infoset in self.infosets:
+                    if infoset.is_chance():
+                        print("chance")
+                        continue
                     s += "At " + infoset.name + ", player " + str(infoset.player) + " "
                     if len(infoset.nodes) > 1:
                         beliefs = []
@@ -120,6 +123,7 @@ class Game:
             p += info_str
         pattern = re.compile(r'I\d+[AN]\d+[bp]')
         readable = pattern.sub(lambda match: self.variable_names.get(match.group(0)), p)
+        print(self.print())
         return readable
 
     def calc_names(self):

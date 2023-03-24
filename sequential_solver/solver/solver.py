@@ -480,7 +480,7 @@ def has_potential(base, ed, i):
     return False
 
 
-def equilibria_equations(g, restrict_belief, restrict_strategy, weak_filter, ed_method):
+def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_filter, ed_method):
     variable_map = g.variable_map.copy()  # <Node> : I1N3b, <Action> : I1A2p
     variables = g.variables.copy()
     sub_map = substitutions(g, variable_map)  # <Node> : (1-I1N1b-I1N2b)
@@ -575,135 +575,145 @@ def equilibria_equations(g, restrict_belief, restrict_strategy, weak_filter, ed_
         game_utility[i] = link_strings(player_summands[i], "+")
         equations_utility.append("P" + str(i) + "u == " + game_utility[i])
 
-
-    # sequential rationality
-    for infoset in g.infosets:
-        if infoset.is_chance():
-            continue
-        player = infoset.player
-        # first express utility of playing action a in node n for all nodes and actions
-        utility = {}
-        for action in infoset.actions:
-            utility[action] = {}
-            for node in infoset.nodes:
-                summands = []
-                for tnode in node.next(action).terminals:
-                    factors = [str(tnode.outcome[player])]
-                    rem_actions = tnode.path[len(node.path) + 1:]
-                    for a in rem_actions:
-                        factors.append(variable_map[a])
-                    product = link_strings(factors, "*")
-                    summands.append(product)
-                utility[action][node] = "(" + link_strings(summands, "+") + ")"
-        # express believed utility as weighted sum over all nodes and actions
-        terms = []
-        for action in infoset.actions:
-            for node in infoset.nodes:
-                terms.append(variable_map[node] + "*" + variable_map[action] + "*" + utility[action][node])
-        utility_at_I = "(" + link_strings(terms, "+") + ")"
-
-        # two equations per action at I:
-        for action in infoset.actions:
-            summands = []
-            for node in infoset.nodes:
-                summands.append(variable_map[node] + "*" + utility[action][node])
-            sum = "(" + link_strings(summands, "+") + ")"
-            # first equation: playing action in I is not better that Is utility
-            equations_seq.append(sum + "-" + utility_at_I + "<= 0")
-            # second equation: either prob of action or difference in utility is 0
-            equations_seq.append(variable_map[action] + "(" + sum + "-" + utility_at_I + ") == 0")
-
-    # consistency
-    # for consistency, construct a linear system that has approximate solutions iff the assessment is consistent
-    alpha = []
-    gamma = []
-    for infoset in g.infosets:
-        print(infoset)
-        if infoset.is_chance():
-            continue
-        for node_pair in itertools.combinations(infoset.nodes, 2):
-            alpha.append(node_pair[0])
-            gamma.append(node_pair[1])
-            print("node pair: ", node_pair)
-    n_pairs = len(alpha)
-    j_map = {}
-    n = 0
-    for action in g.actions:
-        alpha.append(action)
-        gamma.append("1")
-        j_map[action] = n
-        n += 1
-    # n = len(g.actions)
-    variable_map["1"] = "1"
-    rows = []
-    for p in range(n_pairs):
-        h1, h2 = alpha[p], gamma[p]
-        print(h1, h2)
-        row = [0] * n
-        for a in h1.path:
-            row[j_map[a]] += 1
-        for a in h2.path:
-            row[j_map[a]] += -1
-        rows.append(row)
-        print(row)
-    A = np.row_stack(tuple(rows))
-    # if a column of A is zero everywhere, then that column can be removed
-    # as can the corresponding action / 1 in alpha/gamma
-    print("shape of A before pruning: ", A.shape)
-    print(A)
-    sa = ""
-    for x in alpha:
-        sa += variable_map[x] + ","
-    print(sa)
-    sa = ""
-    for x in gamma:
-        sa += variable_map[x] + ","
-    print(sa)
-    zero_columns = np.where(~A.any(axis=0))[0]
-    A = np.delete(A, zero_columns, axis=1)
-    alpha = list(np.delete(alpha, zero_columns + n_pairs, axis=0))
-    gamma = list(np.delete(gamma, zero_columns + n_pairs, axis=0))
-    print("shape of A after pruning: ", A.shape)
-    print(A)
-    sa = ""
-    for x in alpha:
-        sa += variable_map[x] + ","
-    print(sa)
-    sa = ""
-    for x in gamma:
-        sa += variable_map[x] + ","
-    print(sa)
-    A = np.append(A, np.identity(A.shape[1],), axis=0)
-    print("final shape of A with identity: ", A.shape)
-    # find extreme all relevant extreme directions of A
-    eds = []
-    if ed_method == "dd":
-        eds = extreme_directions_dd(A.transpose())
-    elif ed_method == "alt":
-        eds = extreme_directions_alt(A.transpose())
-    elif ed_method == "naive":
-        eds = extreme_directions_naive(A.transpose())
+    if onlynash:
+        equations_seq = ""
+        variables = ""
     else:
-        # default for wrong argument
-        eds = extreme_directions_dd(A.transpose())
+        # sequential rationality
+        for infoset in g.infosets:
+            if infoset.is_chance():
+                continue
+            player = infoset.player
+            # first express utility of playing action a in node n for all nodes and actions
+            utility = {}
+            for action in infoset.actions:
+                utility[action] = {}
+                for node in infoset.nodes:
+                    summands = []
+                    for tnode in node.next(action).terminals:
+                        factors = [str(tnode.outcome[player])]
+                        rem_actions = tnode.path[len(node.path) + 1:]
+                        for a in rem_actions:
+                            factors.append(variable_map[a])
+                        product = link_strings(factors, "*")
+                        summands.append(product)
+                    utility[action][node] = "(" + link_strings(summands, "+") + ")"
+            # express believed utility as weighted sum over all nodes and actions
+            terms = []
+            for action in infoset.actions:
+                for node in infoset.nodes:
+                    terms.append(variable_map[node] + "*" + variable_map[action] + "*" + utility[action][node])
+            utility_at_I = "(" + link_strings(terms, "+") + ")"
 
-    # each extreme direction defines an equation
-    print("alpha: ", alpha)
-    print("gamma: ", gamma)
-    for ed in eds:
-        print("ed")
-        left = []
-        right = []
-        for i in range(len(ed)):
-            p = int(ed[i])
-            if p > 0:
-                left.append(variable_map[alpha[i]] + "^" + str(p))
-                right.append(variable_map[gamma[i]] + "^" + str(p))
-            if p < 0:
-                right.append(variable_map[alpha[i]] + "^" + str(-p))
-                left.append(variable_map[gamma[i]] + "^" + str(-p))
-            print(left, " == ", right)
-        equations_seq.append(link_strings(left, " * ") + " == " + link_strings(right, " * "))
+            # two equations per action at I:
+            for action in infoset.actions:
+                summands = []
+                for node in infoset.nodes:
+                    summands.append(variable_map[node] + "*" + utility[action][node])
+                sum = "(" + link_strings(summands, "+") + ")"
+                # first equation: playing action in I is not better that Is utility
+                equations_seq.append(sum + "-" + utility_at_I + "<= 0")
+                # second equation: either prob of action or difference in utility is 0
+                equations_seq.append(variable_map[action] + "(" + sum + "-" + utility_at_I + ") == 0")
+
+        perfect_information = True
+        for infoset in g.infosets:
+            if len(infoset.nodes) > 1:
+                perfect_information = False
+                break
+
+        if not perfect_information:
+            # consistency
+            # for consistency, construct a linear system that has approximate solutions iff the assessment is consistent
+            alpha = []
+            gamma = []
+            for infoset in g.infosets:
+                print(infoset)
+                if infoset.is_chance():
+                    continue
+                for node_pair in itertools.combinations(infoset.nodes, 2):
+                    alpha.append(node_pair[0])
+                    gamma.append(node_pair[1])
+                    print("node pair: ", node_pair)
+            n_pairs = len(alpha)
+            j_map = {}
+            n = 0
+            for action in g.actions:
+                alpha.append(action)
+                gamma.append("1")
+                j_map[action] = n
+                n += 1
+            # n = len(g.actions)
+            variable_map["1"] = "1"
+            rows = []
+            for p in range(n_pairs):
+                h1, h2 = alpha[p], gamma[p]
+                print(h1, h2)
+                row = [0] * n
+                for a in h1.path:
+                    row[j_map[a]] += 1
+                for a in h2.path:
+                    row[j_map[a]] += -1
+                rows.append(row)
+                print(row)
+            A = np.row_stack(tuple(rows))
+            # if a column of A is zero everywhere, then that column can be removed
+            # as can the corresponding action / 1 in alpha/gamma
+            print("shape of A before pruning: ", A.shape)
+            print(A)
+            sa = ""
+            for x in alpha:
+                sa += variable_map[x] + ","
+            print(sa)
+            sa = ""
+            for x in gamma:
+                sa += variable_map[x] + ","
+            print(sa)
+            zero_columns = np.where(~A.any(axis=0))[0]
+            A = np.delete(A, zero_columns, axis=1)
+            alpha = list(np.delete(alpha, zero_columns + n_pairs, axis=0))
+            gamma = list(np.delete(gamma, zero_columns + n_pairs, axis=0))
+            print("shape of A after pruning: ", A.shape)
+            print(A)
+            sa = ""
+            for x in alpha:
+                sa += variable_map[x] + ","
+            print(sa)
+            sa = ""
+            for x in gamma:
+                sa += variable_map[x] + ","
+            print(sa)
+            A = np.append(A, np.identity(A.shape[1],), axis=0)
+            print("final shape of A with identity: ", A.shape)
+            # find extreme all relevant extreme directions of A
+            eds = []
+            if ed_method == "dd":
+                eds = extreme_directions_dd(A.transpose())
+            elif ed_method == "alt":
+                eds = extreme_directions_alt(A.transpose())
+            elif ed_method == "naive":
+                eds = extreme_directions_naive(A.transpose())
+            else:
+                # default for wrong argument
+                eds = extreme_directions_dd(A.transpose())
+
+            # each extreme direction defines an equation
+            print("alpha: ", alpha)
+            print("gamma: ", gamma)
+            for ed in eds:
+                print("ed")
+                left = []
+                right = []
+                for i in range(len(ed)):
+                    p = int(ed[i])
+                    if p > 0:
+                        left.append(variable_map[alpha[i]] + "^" + str(p))
+                        right.append(variable_map[gamma[i]] + "^" + str(p))
+                    if p < 0:
+                        right.append(variable_map[alpha[i]] + "^" + str(-p))
+                        left.append(variable_map[gamma[i]] + "^" + str(-p))
+                    print(left, " == ", right)
+                equations_seq.append(link_strings(left, " * ") + " == " + link_strings(right, " * "))
 
 
     # nash rationality
@@ -858,7 +868,7 @@ def wolfram_solve_equations(g, result, include_se):
     session.evaluate(wlexpr("NE = If[Head[nes] == Or, List @@ nes, {nes}, {nes}]"))
     nash_solutions = session.evaluate(wlexpr("Map[Function[x, ToString[x, InputForm]], NE]"))
     print(nash_solutions)
-    seq_solutions = ""
+    seq_solutions = ()
     if include_se:
         seq_call = "CylindricalDecomposition[nashresult && " + eq + ", " + expr_var + "]"
         session.evaluate(wlexpr("{seqtime, seqresult} = AbsoluteTiming[" + seq_call + "]"))
@@ -916,8 +926,8 @@ def wolfram_solve_equations(g, result, include_se):
         expr_var_u = "{" + ", ".join(vars + var_u) + "}"
         utility_call = "CylindricalDecomposition[" + solution_eq + " && " + eq_u + ", " + expr_var_u + "]"
         session.evaluate(wlexpr("{utilitytime, utilityresult} = AbsoluteTiming[" + utility_call + "];"))
-        session.evaluate(wlexpr("utility = BooleanConvert[Simplify[utilityresult]];"))
-        utility_solution = session.evaluate(wlexpr("ToString[utility, InputForm]"))
+        # session.evaluate(wlexpr("utility = BooleanConvert[Simplify[utilityresult]];"))
+        utility_solution = session.evaluate(wlexpr("ToString[utilityresult, InputForm]"))
 
         solution.utility = []
         for i in range(g.players):
@@ -935,6 +945,7 @@ def wolfram_solve_equations(g, result, include_se):
 
     session.terminate()
     return solutions
+
 
 def write_wolframscript(result, output_file_name, header, pytime, mformat):
     eq, eq_n, utility, var_map, sub_map, var, var_n = result
@@ -999,6 +1010,7 @@ def convert_to_gte(g, s):
     gte_text += seperator + "" + metadata_text
     return gte_text
 
+
 def test_import(g):
     print("#nodes: ", len(g.nodes))
     print("#infosets ", len(g.infosets))
@@ -1051,10 +1063,11 @@ def solve(g,
 
     start_time = time.time()
     equations = equilibria_equations(g,
-                                    restrict_belief=restrict_belief,
-                                    restrict_strategy=restrict_strategy,
-                                    weak_filter=weak_filter,
-                                    ed_method=extreme_directions)
+                                     restrict_belief=restrict_belief,
+                                     restrict_strategy=restrict_strategy,
+                                     onlynash = not include_sequential,
+                                     weak_filter=weak_filter,
+                                     ed_method=extreme_directions)
     eq_time = time.time()
     if create_wls:
         if not output_file:

@@ -1,10 +1,46 @@
 player 1 name 1
 player 2 name 2
+player 3 name 3
 level 0 node 1 player 1 
-level 2 node 1 xshift -4.6 from 0,1 move A 
-level 2 node 2 xshift 4.6 from 0,1 move B 
-level 4 node 1 xshift -2.3 from 2,1 move a payoffs 3 3
-level 4 node 2 xshift 2.3 from 2,1 move b payoffs 0 4
-level 4 node 3 xshift -2.3 from 2,2 move a payoffs 4 0
-level 4 node 4 xshift 2.3 from 2,2 move b payoffs 1 1
-iset 2,1 2,2 player 2
+level 2 node 1 player 2 xshift -4.6 from 0,1 move A 
+level 2 node 2 player 2 xshift 4.6 from 0,1 move B 
+level 4 node 1 player 3 xshift -3.45 from 2,1 move a 
+level 4 node 2 player 3 xshift -1.15 from 2,1 move b 
+level 4 node 3 player 3 xshift -3.45 from 2,2 move e 
+level 4 node 4 player 3 xshift -1.15 from 2,2 move f 
+level 4 node 5 player 3 xshift 1.15 from 2,1 move c 
+level 4 node 6 player 3 xshift 1.15 from 2,2 move g 
+level 4 node 7 player 3 xshift 3.45 from 2,1 move d 
+level 4 node 8 player 3 xshift 3.45 from 2,2 move h 
+level 6 node 1 xshift -0.86 from 4,8 move null payoffs 0 0 0
+level 6 node 2 xshift -0.29 from 4,8 move null payoffs 0 0 0
+level 6 node 3 xshift -0.86 from 4,4 move null payoffs 0 0 0
+level 6 node 4 xshift -0.29 from 4,4 move null payoffs 0 0 0
+level 6 node 5 xshift -0.86 from 4,6 move null payoffs 0 0 0
+level 6 node 6 xshift -0.29 from 4,6 move null payoffs 0 0 0
+level 6 node 7 xshift -0.86 from 4,3 move null payoffs 0 0 0
+level 6 node 8 xshift -0.29 from 4,3 move null payoffs 0 0 0
+level 6 node 9 xshift -0.86 from 4,2 move P payoffs 0 0 0
+level 6 node 10 xshift -0.29 from 4,2 move Q payoffs 0 0 0
+level 6 node 11 xshift -0.86 from 4,5 move T payoffs 0 0 0
+level 6 node 12 xshift -0.29 from 4,5 move U payoffs 0 0 0
+level 6 node 13 xshift -0.86 from 4,7 move X payoffs 0 0 0
+level 6 node 14 xshift -0.29 from 4,7 move Y payoffs 0 0 0
+level 6 node 15 xshift -0.86 from 4,1 move L payoffs 0 0 0
+level 6 node 16 xshift -0.29 from 4,1 move M payoffs 0 0 0
+level 6 node 17 xshift 0.29 from 4,8 move null payoffs 0 0 0
+level 6 node 18 xshift 0.29 from 4,4 move null payoffs 0 0 0
+level 6 node 19 xshift 0.29 from 4,6 move null payoffs 0 0 0
+level 6 node 20 xshift 0.29 from 4,3 move null payoffs 0 0 0
+level 6 node 21 xshift 0.29 from 4,2 move R payoffs 0 0 0
+level 6 node 22 xshift 0.29 from 4,5 move V payoffs 0 0 0
+level 6 node 23 xshift 0.29 from 4,7 move Z payoffs 0 0 0
+level 6 node 24 xshift 0.29 from 4,1 move N payoffs 0 0 0
+level 6 node 25 xshift 0.86 from 4,8 move null payoffs 0 0 0
+level 6 node 26 xshift 0.86 from 4,4 move null payoffs 0 0 0
+level 6 node 27 xshift 0.86 from 4,6 move null payoffs 0 0 0
+level 6 node 28 xshift 0.86 from 4,3 move null payoffs 0 0 0
+level 6 node 29 xshift 0.86 from 4,2 move S payoffs 0 0 0
+level 6 node 30 xshift 0.86 from 4,5 move W payoffs 0 0 0
+level 6 node 31 xshift 0.86 from 4,7 move null payoffs 0 0 0
+level 6 node 32 xshift 0.86 from 4,1 move O payoffs 0 0 0
