@@ -1,5 +1,3 @@
-import subprocess
-
 import os
 from bimatrix_solver.solver.solve_game import execute
 from django.shortcuts import render
@@ -12,15 +10,24 @@ from rest_framework.response import Response
 
 from gte_backend.settings import BASE_DIR
 
+import queue
+import signal
+import threading
+from time import sleep
+from wolframclient.evaluation import WolframLanguageSession
+
 import sequential_solver.solver.gametree
 import sequential_solver.solver.solver as seq_solver
+WOLFRAM_TIMEOUT = 5 * 60
+wolframQueue = queue.Queue()
+queue_running = False
+wolfram_thread = None
 
 
 @api_view(["POST"])
 @authentication_classes(())
 @permission_classes((AllowAny, ))
 def solve_game(request):
-    global busy
     game_text = request.POST.get('game_text')
     config = request.POST.get('config')
     print(config)
@@ -28,34 +35,74 @@ def solve_game(request):
     file = open(file_name, "w+")
     file.write(str(game_text))
     file.close()
-    before = kernelController.started
-    if busy:
-        result = "WolframClient is currently busy. please try again later"
+    include_nash = "include_nash" in config,
+    include_sequential = "include_sequential" in config,
+    restrict_belief = "restrict_belief" in config,
+    restrict_strategy = "restrict_strategy" in config
+    g = seq_solver.import_game(file_name)
+    equations = seq_solver.equilibria_equations(g,
+                                     restrict_belief=restrict_belief,
+                                     restrict_strategy=restrict_strategy,
+                                     onlynash = not include_sequential,
+                                     weak_filter=False,
+                                     ed_method="dd")
+
+    global wolfram_thread
+    if not wolfram_thread or not wolfram_thread.is_alive():
+        wolfram_thread = threading.Thread(target=wolfram_queue, args=())
+        wolfram_thread.start()
+
+    element = [(g, equations, include_sequential), None, "waiting"]
+    wolframQueue.put(element)
+    while element[2] == "waiting":
+        sleep(1)
+    if element[2] == "completed":
+        g.solutions = element[1]
+        include_types = []
+        if include_nash:
+            include_types.append("Nash Equilibria")
+        if include_sequential:
+            include_types.append("Sequential Equilibria")
+        result = g.print_solutions(long=False, include_types=include_types)
+    elif element[2] == "timeout":
+        result = "Request timed out performing mathematica calculations after " + str(WOLFRAM_TIMEOUT) + "s"
     else:
-        busy = True
-        result = seq_solver.solve_from_file(file_name,
-              output_file="",
-              create_wls=False,
-              long_output=False,
-              include_header=False,
-              include_time=False,
+        result = "Something went wrong: " + str(element[1])
 
-              include_nash="include_nash" in config,
-              include_sequential="include_sequential" in config,
-              restrict_belief="restrict_belief" in config,
-              restrict_strategy="restrict_strategy" in config,
-              weak_filter=False,
-              extreme_directions="dd")
-        busy = False
-
-    after = kernelController.started
-    print("before: ", before, "; after, ", after)
-    '''
-    # subprocess for solver.py
-    # log = subprocess.check_output(["python3",  os.path.join(BASE_DIR, "sequential_solver/solver/solver.py"),  file_name + ".ef", "-o", file_name + ".gte"])
-    solver_path = "/home/mg_linux/Master/GTE_SE/sequential-equilibria/solver/solver.py"
-    log = subprocess.check_output(["python3", solver_path ,  file_name + ".ef", "-o", file_name + ".gte"])
-    result_file = open(file_name + ".gte", "r")
-    result = result_file.read()
-    '''
     return Response({"solver_output": result}, status=status.HTTP_201_CREATED)
+
+
+def wolfram_queue():
+    session = WolframLanguageSession()
+    while True:
+        element = wolframQueue.get()
+        completion_event = threading.Event()
+        timeout_event = threading.Event()
+        thread = threading.Thread(target=worker, args=(element, session, completion_event, timeout_event))
+        thread.start()
+        t = 0
+        while thread.is_alive() and not completion_event.isSet():
+            if t > WOLFRAM_TIMEOUT:
+                timeout_event.set()
+                session.terminate()
+                break
+            sleep(1)
+            t += 1
+        wolframQueue.task_done()
+    session.terminate()
+
+
+def worker(element, session, completion_event, timeout_event):
+    args = element[0]
+    try:
+        solutions = seq_solver.wolfram_solve_equations(*args, session)
+        completion_event.set()
+        element[1] = solutions
+        element[2] = "completed"
+    except Exception as e:
+        if timeout_event.isSet():
+            element[1] = ""
+            element[2] = "timeout"
+        else:
+            element[1] = e
+            element[2] = "error"

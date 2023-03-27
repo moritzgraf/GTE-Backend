@@ -837,10 +837,11 @@ def link_strings(lst, sep):
     return sep.join(lst)
 
 
-def wolfram_solve_equations(g, result, include_se):
+def wolfram_solve_equations(g, result, include_se, session=None):
     eq, eq_n, eq_u, var_map, resub_map, var, var_n = result
 
-    session =  WolframLanguageSession()
+    if not session:
+        session = WolframLanguageSession()
     redef_inputform = '''\nUnprotect[Inequality];\n
                 Format[HoldPattern @ Inequality[a__], InputForm] := Module[{res = HoldForm[a], rel},
                     rel = List @@ Replace[res[[2 ;; -1 ;; 2]],
