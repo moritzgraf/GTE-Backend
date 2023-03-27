@@ -23,6 +23,23 @@ wolframQueue = queue.Queue()
 queue_running = False
 wolfram_thread = None
 
+@api_view(["POST"])
+@authentication_classes(())
+@permission_classes((AllowAny, ))
+def read_game(request):
+    game_text = request.POST.get('game_text')
+    file_name = os.path.join(BASE_DIR, "sequential_solver/solver/example_input/game_to_read.ef")
+    file = open(file_name, "w+")
+    file.write(str(game_text))
+    file.close()
+    g = seq_solver.import_game(file_name)
+    s = "Variable : Internal : Overwrite Name"
+    for variable in g.variable_names:
+        name = g.variable_names[variable]
+        s += "\n" + name + " : " + variable
+
+    return Response({"variable_names": s}, status=status.HTTP_201_CREATED)
+
 
 @api_view(["POST"])
 @authentication_classes(())
@@ -30,6 +47,7 @@ wolfram_thread = None
 def solve_game(request):
     game_text = request.POST.get('game_text')
     config = request.POST.get('config')
+    variable_overwrites = request.POST.get('variable_overwrites')
     print(config)
     file_name = os.path.join(BASE_DIR, "sequential_solver/solver/example_input/game_to_solve.ef")
     file = open(file_name, "w+")
@@ -40,6 +58,14 @@ def solve_game(request):
     restrict_belief = "restrict_belief" in config,
     restrict_strategy = "restrict_strategy" in config
     g = seq_solver.import_game(file_name)
+    lines = variable_overwrites.strip().split("\n")
+    for line in lines:
+        print(line)
+        split = line.split(":", 1)
+        if len(split) > 1:
+            var = split[0].strip()
+            name = split[1].strip()
+            g.variable_names[var] = name
     equations = seq_solver.equilibria_equations(g,
                                      restrict_belief=restrict_belief,
                                      restrict_strategy=restrict_strategy,
