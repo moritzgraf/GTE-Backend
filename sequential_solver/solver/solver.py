@@ -13,6 +13,9 @@ import sequential_solver.solver.gametree as gt
 
 # import gambit
 
+LOG = True
+
+
 def read_ef(filename):
     f = open(filename, "r")
     g = gt.Game()
@@ -70,7 +73,6 @@ def read_ef(filename):
             eq = line.partition("restrict ")[2]
             g.equations.append(eq)
 
-
     for nodeline in node_lines:
         loc, player, _, _, payoff = nodeline
         node = gt.Node()
@@ -116,7 +118,9 @@ def read_ef(filename):
                         action.prob = "(" + p + "/" + q + ")"
                     else:
                         action.prob = prev_action
-                action.name = prev_action
+                    action.name = "p" + str(len(parent.infoset.actions)) + action.prob
+                else:
+                    action.name = prev_action
                 eftg_actions[action_id] = action
 
             node.parent = parent
@@ -177,7 +181,7 @@ def read_efg(filename):
                 player = -1
                 infoset_id = "c, " + numbers[0]
 
-            if infoset_id not in efgtg_infosets:#
+            if infoset_id not in efgtg_infosets:  #
                 infoset = gt.Infoset()
                 infoset.player = player
                 g.infosets.append(infoset)
@@ -221,7 +225,7 @@ def import_gambit(filename):
     i = 0
     while not len(frontier) == 0:
         i += 1
-        print("step ", i, " root has ", len(g.root.children), " children")
+        if LOG : print("step ", i, " root has ", len(g.root.children), " children")
         parent = frontier.pop()
         node = ggtg_nodes[parent]
         if not parent.is_terminal:
@@ -276,20 +280,20 @@ def import_gambit(filename):
 
 def extreme_directions_alt(A):
     start_time = time.time()
-    print("alternative method: ")
-    print(A)
+    if LOG: print("alternative method: ")
+    if LOG: print(A)
     m, n = A.shape
-    print("cone dimensionality: ", n)
+    if LOG: print("cone dimensionality: ", n)
     doubleA = np.append(A, -A, axis=0)
-    b = np.zeros(2*m)
+    b = np.zeros(2 * m)
     p = poly.Hrep(doubleA, b)
     ed = []
     for g in p.generators:
         ed.append(g)
-    print("initial extreme directions found: ", len(ed))
+    if LOG: print("initial extreme directions found: ", len(ed))
     pairs = list(itertools.combinations(ed, 2))
     while len(pairs) != 0:
-        print(len(pairs), len(ed))
+        if LOG: print(len(pairs), len(ed))
         pair = pairs.pop(0)
         u, v = pair
         for i in range(len(u)):
@@ -310,19 +314,19 @@ def extreme_directions_alt(A):
                     ed.append(w)
                     for p in new_pairs:
                         pairs.append(p)
-    print("list of extreme directions: ")
+    if LOG: print("list of extreme directions: ")
     for e in ed:
-        print(e)
-    print(time.time() - start_time)
+        if LOG: print(e)
+    if LOG: print(time.time() - start_time)
     return ed
 
 
 def extreme_directions_naive(A):
-    print("base method: ")
-    print(A)
+    if LOG: print("base method: ")
+    if LOG: print(A)
     m, n = A.shape
     values = (0, 1, -1)
-    print("cone dimensionality: ", n)
+    if LOG: print("cone dimensionality: ", n)
     st = time.time()
     combinations = itertools.product(values, repeat=n)
     doubleA = np.append(A, -A, axis=0)
@@ -348,37 +352,37 @@ def extreme_directions_naive(A):
                 ed.append(d)
                 # ed_dict_new[comb].append(d)
     et = time.time()
-    print("cone time: ", str(et-st))
-    print("list of extreme directions: ")
+    if LOG: print("cone time: ", str(et - st))
+    if LOG: print("list of extreme directions: ")
     for e in ed:
-        print(e)
-    return ed # , ed_dict, ed_dict_new
+        if LOG: print(e)
+    return ed  # , ed_dict, ed_dict_new
 
 
 def extreme_directions_dd(A):
     start_time = time.time()
-    print("new method: ")
-    print(A)
+    if LOG: print("new method: ")
+    if LOG: print(A)
     m, n = A.shape
-    print("cone dimensionality: ", n)
+    if LOG: print("cone dimensionality: ", n)
     doubleA = np.append(A, -A, axis=0)
     b = np.zeros(2 * m)
     p = poly.Hrep(doubleA, b)
     ed = []
     base_ed = []
     for g in p.generators:
-        print(g)
+        if LOG: print(g)
         ed.append(g)
         base_ed.append(g)
         base_ed.append(-g)
-    print("initial extreme directions found: ", len(ed))
+    if LOG: print("initial extreme directions found: ", len(ed))
     new_base_cones = {}
-    new_base_cones[tuple([0]*n)] = list(base_ed)
+    new_base_cones[tuple([0] * n)] = list(base_ed)
     count = 1
     notnew = 0
     for i in range(n):
 
-        print(i, " base cones: ", len(new_base_cones), " instead of ", np.power(3, i))
+        if LOG: print(i, " base cones: ", len(new_base_cones), " instead of ", np.power(3, i))
 
         base_cones = new_base_cones
         new_base_cones = {}
@@ -386,7 +390,7 @@ def extreme_directions_dd(A):
         for base in base_cones:
             count += 2
             U_old = base_cones[base]
-            # print("cone ", base, " has ", len(U_old), " extreme directions")
+            # if LOG : print("cone ", base, " has ", len(U_old), " extreme directions")
             U_pos = []
             U_neg = []
             U_zero = []
@@ -401,23 +405,23 @@ def extreme_directions_dd(A):
             for u in U_pos:
                 for v in U_neg:
                     if adjacent(base, U_old, u, v):
-                        # print(u, v, " adjacent in ", base)
+                        # if LOG : print(u, v, " adjacent in ", base)
                         w = u[i] * v - v[i] * u
                         if any(w != 0):
                             U_new.append(w)
                             new_ed = True
                             for e in ed:
-                                if np.dot(e, w)*np.dot(e, w) == np.dot(e, e)*np.dot(w, w):
+                                if np.dot(e, w) * np.dot(e, w) == np.dot(e, e) * np.dot(w, w):
                                     new_ed = False
-                                    print("found extreme direction, not new:")
-                                    print(e, " matches ", w)
+                                    if LOG: print("found extreme direction, not new:")
+                                    if LOG: print(e, " matches ", w)
                                     notnew += 1
                                     break
                             if new_ed:
-                                print("found new extreme direction: ", w)
-                                print("from base ", base, " with new restriction at ", i)
-                                print("u = ", u)
-                                print("v = ", v)
+                                if LOG: print("found new extreme direction: ", w)
+                                if LOG: print("from base ", base, " with new restriction at ", i)
+                                if LOG: print("u = ", u)
+                                if LOG: print("v = ", v)
                                 ed.append(w)
 
             b_p = list(base)
@@ -432,21 +436,19 @@ def extreme_directions_dd(A):
             if has_potential(b_n, U_new_neg, i + 1):
                 new_base_cones[tuple(b_n)] = U_new_neg
 
-            #if has_potential(base, U_old, i + 1):
+            # if has_potential(base, U_old, i + 1):
             new_base_cones[base] = U_old
 
+        if LOG: print(i, " total cones considered: ", count, " instead of ", np.power(3, i + 1))
 
-        print(i, " total cones considered: ", count, " instead of ", np.power(3, i+1))
-
-
-    print("list of extreme directions: ")
+    if LOG: print("list of extreme directions: ")
     for e in ed:
-        print(e)
+        if LOG: print(e)
 
-    print(time.time() - start_time)
+    if LOG: print(time.time() - start_time)
     cone_max = np.power(3, n)
-    print(count, " of ", cone_max , " cones considered. (", int(count*100/cone_max), "%)")
-    print("notnew ", notnew)
+    if LOG: print(count, " of ", cone_max, " cones considered. (", int(count * 100 / cone_max), "%)")
+    if LOG: print("notnew ", notnew)
     return ed
 
 
@@ -483,22 +485,43 @@ def has_potential(base, ed, i):
 def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_filter, ed_method):
     variable_map = g.variable_map.copy()  # <Node> : I1N3b, <Action> : I1A2p
     variables = g.variables.copy()
-    sub_map = substitutions(g, variable_map)  # <Node> : (1-I1N1b-I1N2b)
-    resub_map = {}  # used later, I1N3 : (1-I1N1b-I1N2b)
-    for key in sub_map:
+    sub_map = substitutions(g, variable_map)  # I1N3b : (1-I1N1b-I1N2b)
+    resub_map = {}  # used later, I1N3b : I1N3b == (1-I1N1b-I1N2b)
+    for key in variable_map:
         var = variable_map[key]
-        variables.remove(var)
-        if not sub_map[key] == "(1)":
-            resub_map[var] = var + " == " + sub_map[key]
-        variable_map[key] = sub_map[key]
-    for s in resub_map:
-        print(s, resub_map[s])
+        if var in sub_map:
+            variables.remove(var)
+            variable_map[key] = sub_map[var]
+            if not sub_map[var] == "(1)":
+                resub_map[var] = var + " == " + sub_map[var]
+
     # belief variables are removed later
     variables_nash = variables.copy()
 
-    equations_seq = g.equations.copy()
-    equations_nash = g.equations.copy()
-    equations_nash = g.equations.copy()
+    equations_seq = []
+    equations_nash = []
+
+    # game utility, used in future calculations, and for evaluating the result
+    if LOG: print("terminal probabilities: ")
+    game_utility = [""] * g.players
+    player_summands = []
+    for i in range(g.players):
+        player_summands.append([])
+    for t in g.terminals:
+        factors = []
+        for a in t.path:
+            factors.append(variable_map[a])
+        product = link_strings(factors, "*")
+        if LOG: print(t, " ", product, " ", t.outcome)
+        for i in range(g.players):
+            player_summands[i].append(t.outcome[i] + "*" + product)
+
+    equations_utility = []
+    for i in range(g.players):
+        game_utility[i] = link_strings(player_summands[i], "+")
+        equations_utility.append("P" + str(i + 1) + "u == " + game_utility[i])
+        sub_map["P" + str(i + 1) + "u"] = game_utility[i]
+
     # basic rules
     # each action probability variable is positive
     for action in g.actions:
@@ -511,6 +534,8 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
         else:
             eq = var + " >= 0"
         equations_nash.append(eq)
+
+    belief_vars = []
     # each node belief is positive, ignore chance sets, and only added in seqential equations
     for node in g.nodes:
         if node.is_terminal or node.infoset.is_chance():
@@ -524,20 +549,21 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
         equations_seq.append(eq)
         if var in variables_nash:
             variables_nash.remove(var)
+            belief_vars.append(var)
 
-    '''   # add equations from game
-    # added to nash equations only if possible
     for g_eq in g.equations:
         nash_safe = True
-        for var in nash_missing_variables:
-            if var in variables and var in g_eq:
+        for var in belief_vars:
+            if var in g_eq:
                 nash_safe = False
                 break
+        pattern = re.compile(r'I\d+[AN]\d+[bp]|P\d+u')
+        g_eq_sub = pattern.sub(
+            lambda match: sub_map.get(match.group(0)) if match.group(0) in sub_map else match.group(0), g_eq)
         if nash_safe:
-            equations_nash.append(g_eq)
+            equations_nash.append(g_eq_sub)
         else:
-            equations.append(g_eq)'''
-
+            equations.append(g_eq_sub)
 
     for infoset in g.infosets:
         if infoset.is_chance():
@@ -554,26 +580,6 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
             beliefs.append(variable_map[node])
         belief_eq = link_strings(beliefs, "+") + "== 1"
         equations_seq.append(belief_eq)
-
-    # game utility, used in future calculations, and for evaluating the result
-    print("terminal probabilities: ")
-    game_utility = [""]*g.players
-    player_summands = []
-    for i in range(g.players):
-        player_summands.append([])
-    for t in g.terminals:
-        factors = []
-        for a in t.path:
-            factors.append(variable_map[a])
-        product = link_strings(factors, "*")
-        print(t, " ", product, " ", t.outcome)
-        for i in range(g.players):
-            player_summands[i].append(t.outcome[i] + "*" + product)
-
-    equations_utility = []
-    for i in range(g.players):
-        game_utility[i] = link_strings(player_summands[i], "+")
-        equations_utility.append("P" + str(i) + "u == " + game_utility[i])
 
     if onlynash:
         equations_seq = ""
@@ -628,13 +634,13 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
             alpha = []
             gamma = []
             for infoset in g.infosets:
-                print(infoset)
+                if LOG: print(infoset)
                 if infoset.is_chance():
                     continue
                 for node_pair in itertools.combinations(infoset.nodes, 2):
                     alpha.append(node_pair[0])
                     gamma.append(node_pair[1])
-                    print("node pair: ", node_pair)
+                    if LOG: print("node pair: ", node_pair)
             n_pairs = len(alpha)
             j_map = {}
             n = 0
@@ -648,43 +654,43 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
             rows = []
             for p in range(n_pairs):
                 h1, h2 = alpha[p], gamma[p]
-                print(h1, h2)
+                if LOG: print(h1, h2)
                 row = [0] * n
                 for a in h1.path:
                     row[j_map[a]] += 1
                 for a in h2.path:
                     row[j_map[a]] += -1
                 rows.append(row)
-                print(row)
+                if LOG: print(row)
             A = np.row_stack(tuple(rows))
             # if a column of A is zero everywhere, then that column can be removed
             # as can the corresponding action / 1 in alpha/gamma
-            print("shape of A before pruning: ", A.shape)
-            print(A)
+            if LOG: print("shape of A before pruning: ", A.shape)
+            if LOG: print(A)
             sa = ""
             for x in alpha:
                 sa += variable_map[x] + ","
-            print(sa)
+            if LOG: print(sa)
             sa = ""
             for x in gamma:
                 sa += variable_map[x] + ","
-            print(sa)
+            if LOG: print(sa)
             zero_columns = np.where(~A.any(axis=0))[0]
             A = np.delete(A, zero_columns, axis=1)
             alpha = list(np.delete(alpha, zero_columns + n_pairs, axis=0))
             gamma = list(np.delete(gamma, zero_columns + n_pairs, axis=0))
-            print("shape of A after pruning: ", A.shape)
-            print(A)
+            if LOG: print("shape of A after pruning: ", A.shape)
+            if LOG: print(A)
             sa = ""
             for x in alpha:
                 sa += variable_map[x] + ","
-            print(sa)
+            if LOG: print(sa)
             sa = ""
             for x in gamma:
                 sa += variable_map[x] + ","
-            print(sa)
-            A = np.append(A, np.identity(A.shape[1],), axis=0)
-            print("final shape of A with identity: ", A.shape)
+            if LOG: print(sa)
+            A = np.append(A, np.identity(A.shape[1], ), axis=0)
+            if LOG: print("final shape of A with identity: ", A.shape)
             # find extreme all relevant extreme directions of A
             eds = []
             if ed_method == "dd":
@@ -698,10 +704,10 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                 eds = extreme_directions_dd(A.transpose())
 
             # each extreme direction defines an equation
-            print("alpha: ", alpha)
-            print("gamma: ", gamma)
+            if LOG: print("alpha: ", alpha)
+            if LOG: print("gamma: ", gamma)
             for ed in eds:
-                print("ed")
+                if LOG: print("ed")
                 left = []
                 right = []
                 for i in range(len(ed)):
@@ -712,9 +718,8 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                     if p < 0:
                         right.append(variable_map[alpha[i]] + "^" + str(-p))
                         left.append(variable_map[gamma[i]] + "^" + str(-p))
-                    print(left, " == ", right)
+                    if LOG: print(left, " == ", right)
                 equations_seq.append(link_strings(left, " * ") + " == " + link_strings(right, " * "))
-
 
     # nash rationality
     if weak_filter:
@@ -757,7 +762,7 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
         for i in range(g.players):
             player_infoset_actions.append([])
 
-        print(g.players)
+        if LOG: print(g.players)
         for infoset in g.infosets:
             if infoset.player != -1:
                 player_infoset_actions[infoset.player].append(infoset.actions)
@@ -780,10 +785,9 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                     nash_strategies[i].add(s)
 
         '''
-        nash_strategies = [[]]*(g.players+1)
+        nash_strategies = [[]] * (g.players + 1)
         for i in range(g.players):
             nash_strategies[i] = itertools.product(*player_infoset_actions[i])
-
 
         for i in range(g.players):
             player_utility = game_utility[i]
@@ -796,6 +800,8 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                         if not a == action:
                             mod_utility = mod_utility.replace(variable_map[a], "0")
                     product.append(variable_map[action])
+                if len(product) == 0:
+                    continue
                 s_prob = link_strings(product, "*")
                 # 2 equations per pure strategy:
                 # playing pure strategy does not have more utility than equilibrium strategy
@@ -803,8 +809,8 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                 # if strategy is played, it has the same utility as equilibrium strategy
                 equations_nash.append(s_prob + "*((" + mod_utility + ")-(" + player_utility + ")) == 0")
 
-    print(len(equations_nash), " equations for nash equilibria")
-    print(len(equations_seq), " equations for sequential equilibria")
+    if LOG: print(len(equations_nash), " equations for nash equilibria")
+    if LOG: print(len(equations_seq), " equations for sequential equilibria")
     equations_seq = link_strings(equations_seq, " && ")
     equations_nash = link_strings(equations_nash, " && ")
     equations_utility = link_strings(equations_utility, " && ")
@@ -822,13 +828,14 @@ def substitutions(g, variable_map):
         for node in infoset.nodes:
             lst.append(variable_map[node])
         sub = "(" + link_strings(lst[:-1], "-") + ")"
-        substitute_map[infoset.nodes[-1]] = sub
-
+        # substitute_map[infoset.nodes[-1]] = sub
+        substitute_map[variable_map[infoset.nodes[-1]]] = sub
         lst = ["1"]
         for action in infoset.actions:
             lst.append(variable_map[action])
         sub = "(" + link_strings(lst[:-1], "-") + ")"
-        substitute_map[infoset.actions[-1]] = sub
+        # substitute_map[infoset.actions[-1]] = sub
+        substitute_map[variable_map[infoset.actions[-1]]] = sub
 
     return substitute_map
 
@@ -868,7 +875,7 @@ def wolfram_solve_equations(g, result, include_se, session=None):
     session.evaluate(wlexpr("nes = BooleanConvert[Normal[nashresult]]"))
     session.evaluate(wlexpr("NE = If[Head[nes] == Or, List @@ nes, {nes}, {nes}]"))
     nash_solutions = session.evaluate(wlexpr("Map[Function[x, ToString[x, InputForm]], NE]"))
-    print(nash_solutions)
+    if LOG: print("Nash Solutions: ", nash_solutions, len(nash_solutions))
     seq_solutions = ()
     if include_se:
         seq_call = "CylindricalDecomposition[nashresult && " + eq + ", " + expr_var + "]"
@@ -876,8 +883,9 @@ def wolfram_solve_equations(g, result, include_se, session=None):
         session.evaluate(wlexpr("newEQ = BooleanConvert[Simplify[seqresult]]"))
         session.evaluate(wlexpr("SE = If[Head[newEQ] == Or, List @@ newEQ, {newEQ}, {newEQ}]"))
         seq_solutions = session.evaluate(wlexpr("Map[Function[x, ToString[x, InputForm]], SE]"))
+        if LOG: print("SE Solutions: ", seq_solutions, len(seq_solutions))
 
-    wolfram_solutions = nash_solutions+seq_solutions
+    wolfram_solutions = nash_solutions + seq_solutions
     solutions = []
     for i in range(len(wolfram_solutions)):
         nash = i < len(nash_solutions)
@@ -893,7 +901,8 @@ def wolfram_solve_equations(g, result, include_se, session=None):
             vars = var
             expr_vars = expr_var
         # obtain clean solution by additional decompositon (gets rid of 3x == 1 type equations that Simplify created)
-        solution_eq = session.evaluate(wlexpr("ToString[CylindricalDecomposition[" + wolfram_solutions[i] + ", " + expr_vars + "], InputForm]"))
+        solution_eq = session.evaluate(
+            wlexpr("ToString[CylindricalDecomposition[" + wolfram_solutions[i] + ", " + expr_vars + "], InputForm]"))
 
         constraints = solution_eq.split(" && ")
         # because of the variable ordering in the decomposition
@@ -908,13 +917,14 @@ def wolfram_solve_equations(g, result, include_se, session=None):
         for sub_var in resub_map:
             if "b" in sub_var and nash:
                 continue
-            print("resub of " + sub_var)
+            if LOG: print("resub of " + sub_var)
             expr_vars = "{" + ", ".join(vars + [sub_var]) + "}"
-            call = "subresult = CylindricalDecomposition[" + solution_eq + " && " + resub_map[sub_var] + ", " + expr_vars + "]"
+            call = "subresult = CylindricalDecomposition[" + solution_eq + " && " + resub_map[
+                sub_var] + ", " + expr_vars + "]"
             session.evaluate(wlexpr(call))
             # session.evaluate(wlexpr("resub = BooleanConvert[Simplify[subresult]]"))
             resub_solution = session.evaluate(wlexpr("ToString[subresult, InputForm]"))
-            print(resub_solution)
+            if LOG: print(resub_solution)
             for c in resub_solution.split(" && "):
                 if sub_var in c:
                     solution.variable_constraints[sub_var] = c
@@ -923,7 +933,7 @@ def wolfram_solve_equations(g, result, include_se, session=None):
         # calculations of utilities also with additional cylindrical decomposition#
         var_u = []
         for j in range(g.players):
-            var_u.append("P" + str(j) + "u")
+            var_u.append("P" + str(j + 1) + "u")
         expr_var_u = "{" + ", ".join(vars + var_u) + "}"
         utility_call = "CylindricalDecomposition[" + solution_eq + " && " + eq_u + ", " + expr_var_u + "]"
         session.evaluate(wlexpr("{utilitytime, utilityresult} = AbsoluteTiming[" + utility_call + "];"))
@@ -932,7 +942,7 @@ def wolfram_solve_equations(g, result, include_se, session=None):
 
         solution.utility = []
         for i in range(g.players):
-            v = "P"+str(i)+"u"
+            v = "P" + str(i + 1) + "u"
             for c in utility_solution.split(" && "):
                 if v in c:
                     a, b, = c.split(" == ", 1)
@@ -979,13 +989,13 @@ def write_wolframscript(result, output_file_name, header, pytime, mformat):
     f.write("\nsetime = 0")
     expr_var = "{" + link_strings(var, ", ") + "}"
     ne_expr_var = "{" + link_strings(var_n, ", ") + "}"
-    nash_call = "CylindricalDecomposition["+ eq_n +", " + ne_expr_var + ", \"Function\"]"
+    nash_call = "CylindricalDecomposition[" + eq_n + ", " + ne_expr_var + ", \"Function\"]"
     f.write("\n{nashtime, nashresult} = AbsoluteTiming[" + nash_call + "]")
     f.write("\nnes = BooleanConvert[Normal[nashresult]];")
     f.write("\nNE = If[Head[nes] == Or, List @@ nes, {nes}, {nes}];")
     extra_rest = " nashresult && "
 
-    call = "CylindricalDecomposition["+ extra_rest + eq + ", " + expr_var + "]"
+    call = "CylindricalDecomposition[" + extra_rest + eq + ", " + expr_var + "]"
     f.write("\n{time, result} = AbsoluteTiming[" + call + "];")
     f.write("\n newEQ = BooleanConvert[Simplify[result]];")
     f.write("\nSE = Join[SE, If[Head[newEQ] == Or, List @@ newEQ, {newEQ}, {newEQ}]];")
@@ -994,9 +1004,11 @@ def write_wolframscript(result, output_file_name, header, pytime, mformat):
     f.write("\nPrint[\"\n\nNash Equilibria, calculated in \", nashtime, \"s (mathematica):\"]")
     f.write("\nFor[i=1,i<=Length[NE],i++, Print[Format[NE[[i]], " + mformat + "]]]")
     f.write("\n \nPrint[\"\n\nSequential Equilibria, calculated in \", time, \"s (mathematica): \"]\n")
-    f.write("\nFor[i=1,i<=Length[SE],i++, Print[Format[CylindricalDecomposition[SE[[i]], " + expr_var + "], " + mformat + "]]]")
+    f.write(
+        "\nFor[i=1,i<=Length[SE],i++, Print[Format[CylindricalDecomposition[SE[[i]], " + expr_var + "], " + mformat + "]]]")
     f.write("\nPrint[\"\nTotal required time: \", (" + pytime + "+ nashtime + time), \"s\"]")
     f.close()
+
 
 def convert_to_gte(g, s):
     pattern2 = re.compile(r'Nash Equilibria[^:]*:\s*([\S\s]*)Sequential Equilibria[^:]*:\s*([\S\s]*)Total required')
@@ -1006,26 +1018,26 @@ def convert_to_gte(g, s):
     gametree_text = g.print()
     metadata_text = ""
     seperator = "\n-----\n"
-    gte_text = "Nash Equilibria:\n"+nash_text+"Sequential Equilibria:\n"+seq_text
+    gte_text = "Nash Equilibria:\n" + nash_text + "Sequential Equilibria:\n" + seq_text
     gte_text += seperator + "Game Tree:\n" + gametree_text
     gte_text += seperator + "" + metadata_text
     return gte_text
 
 
 def test_import(g):
-    print("#nodes: ", len(g.nodes))
-    print("#infosets ", len(g.infosets))
-    print("#actions ", len(g.actions))
+    if LOG: print("#nodes: ", len(g.nodes))
+    if LOG: print("#infosets ", len(g.infosets))
+    if LOG: print("#actions ", len(g.actions))
     for node in g.nodes:
-        print(node)
-        print("has ", len(node.children), " children")
-        print("and ", len(node.terminals), " terminals")
-        print("and outcome ", node.outcome)
+        if LOG: print(node)
+        if LOG: print("has ", len(node.children), " children")
+        if LOG: print("and ", len(node.terminals), " terminals")
+        if LOG: print("and outcome ", node.outcome)
     for infoset in g.infosets:
-        print(infoset, "belonging to player ", infoset.player)
-        print("is chance?", infoset.is_chance())
-        print("has nodes ", infoset.nodes)
-        print("and actions ", infoset.actions)
+        if LOG: print(infoset, "belonging to player ", infoset.player)
+        if LOG: print("is chance?", infoset.is_chance())
+        if LOG: print("has nodes ", infoset.nodes)
+        if LOG: print("and actions ", infoset.actions)
 
 
 def solve(g,
@@ -1042,7 +1054,6 @@ def solve(g,
           restrict_strategy=False,
           weak_filter=False,
           extreme_directions="dd"):
-
     s = ""
     if include_header:
         header = "Analysis of Equilibria in " + file_name + "\n"
@@ -1066,7 +1077,7 @@ def solve(g,
     equations = equilibria_equations(g,
                                      restrict_belief=restrict_belief,
                                      restrict_strategy=restrict_strategy,
-                                     onlynash = not include_sequential,
+                                     onlynash=not include_sequential,
                                      weak_filter=weak_filter,
                                      ed_method=extreme_directions)
     eq_time = time.time()
@@ -1106,16 +1117,15 @@ def solve_from_file(file_name,
                     restrict_strategy=False,
                     weak_filter=False,
                     extreme_directions="dd"):
-
     g = import_game(file_name)
 
     return solve(g, output_file=output_file, create_wls=create_wls, long_output=long_output,
-                    include_header=include_header, include_time=include_time, include_nash=include_nash,
-                    include_sequential=include_sequential, restrict_belief=restrict_belief,
-                    restrict_strategy=restrict_strategy, weak_filter=weak_filter, extreme_directions=extreme_directions)
+                 include_header=include_header, include_time=include_time, include_nash=include_nash,
+                 include_sequential=include_sequential, restrict_belief=restrict_belief,
+                 restrict_strategy=restrict_strategy, weak_filter=weak_filter, extreme_directions=extreme_directions)
 
 
-def import_game (file_name):
+def import_game(file_name):
     fn_split = file_name.split(".")
     g = gt.Game()
     try:
@@ -1129,6 +1139,7 @@ def import_game (file_name):
         parser = argparse.ArgumentParser()
         parser.error("filename " + args.file_name + " is not a valid file type (use .ef or .efg)")
     return g
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -1157,7 +1168,7 @@ if __name__ == '__main__':
                         help="instead of filtering nash equilibria, only filter one deviation nash equilibria",
                         action="store_true")
     parser.add_argument("-ed", "--extreme_directions",
-                        help = "choose method to compute all extreme directions:\n"
+                        help="choose method to compute all extreme directions:\n"
                              "'dd' to use the modified double description with pruning (default)\n"
                              "'alt' to use the alternative method of matching pairs\n"
                              "'naive' to iterate over all cones",
@@ -1191,26 +1202,26 @@ if __name__ == '__main__':
     create_wls = False
 
     s = solve_from_file(file_name, output_file=output_file, create_wls=create_wls, long_output=long_output,
-          include_header=include_header, include_time=include_time, include_nash=include_nash,
-          include_sequential=include_sequential, restrict_belief=args.restrict_belief,
-          restrict_strategy=args.restrict_strategy, weak_filter=args.weak_filter, extreme_directions=args.extreme_directions)
-
+                        include_header=include_header, include_time=include_time, include_nash=include_nash,
+                        include_sequential=include_sequential, restrict_belief=args.restrict_belief,
+                        restrict_strategy=args.restrict_strategy, weak_filter=args.weak_filter,
+                        extreme_directions=args.extreme_directions)
 
     '''
-    
+
     if file_name_txt:
         text = subprocess.check_output(["wolframscript", file_name_wls])
         s = text.decode()
         pattern = re.compile(r'I\d+[AN]\d+[bp]')
         readable = pattern.sub(lambda match: g.variable_names.get(match.group(0)), s)
-        print(readable)
+        if LOG : print(readable)
         f2 = open(file_name_txt, "w")
         f2.truncate()
         f2.write(readable)
         f2.close()
         if file_name_gte:
             text = convert_to_gte(g, readable)
-            print(text)
+            if LOG : print(text)
             f3 = open(file_name_gte, "w")
             f3.truncate()
             f3.write(text)

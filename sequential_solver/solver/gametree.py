@@ -33,9 +33,9 @@ class Game:
         for infoset in self.infosets:
             entry = ""
             if len(infoset.nodes) == 1:
-                entry += "Node " + infoset.nodes[0].name + " of Player " + str(infoset.player) +"\n"
+                entry += "Node " + infoset.nodes[0].name + " of Player " + str(infoset.player+1) +"\n"
             else:
-                entry += "Information Set " + infoset.name + " of Player " + str(infoset.player) + "\n"
+                entry += "Information Set " + infoset.name + " of Player " + str(infoset.player+1) + "\n"
                 node_names = []
                 for node in infoset.nodes:
                     node_names.append(node.name)
@@ -59,12 +59,13 @@ class Game:
         solution_types = {}
         for solution in self.solutions:
             s = ""
-            if long:
+            if len(solution.variable_constraints) == 0:
+                s = "None"
+            elif long:
                 for infoset in self.infosets:
                     if infoset.is_chance():
-                        print("chance")
                         continue
-                    s += "At " + infoset.name + ", player " + str(infoset.player) + " "
+                    s += "At " + infoset.name + ", player " + str(infoset.player+1) + " "
                     if len(infoset.nodes) > 1:
                         beliefs = []
                         hasbelief = True
@@ -81,7 +82,7 @@ class Game:
                     s += "plays: " + ", ".join(actions) + "\n"
                 s += "This results in a payoff of: \n"
                 for i in range(self.players):
-                    s += solution.utility[i] + " for player " + str(i) + "\n"
+                    s += solution.utility[i] + " for player " + str(i+1) + "\n"
             else:
                 constraints = []
                 for var in self.variables:
@@ -123,7 +124,6 @@ class Game:
             p += info_str
         pattern = re.compile(r'I\d+[AN]\d+[bp]')
         readable = pattern.sub(lambda match: self.variable_names.get(match.group(0)), p)
-        print(self.print())
         return readable
 
     def calc_names(self):
@@ -132,7 +132,6 @@ class Game:
             for action in node.path:
                 action_names.append(action.name)
             node.name = "[" + ",".join(action_names) + "]"
-            print(node.name)
         i = 0
         for infoset in self.infosets:
             if len(infoset.nodes) > 1:

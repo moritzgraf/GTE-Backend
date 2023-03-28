@@ -37,7 +37,10 @@ def read_game(request):
     for variable in g.variable_names:
         name = g.variable_names[variable]
         s += "\n" + name + " : " + variable
-
+    s += "\n---"
+    s += "\nPlayer : Payoff"
+    for i in range(g.players):
+        s += "\n" + str(i+1) + " : " + "P" + str(i+1) + "u"
     return Response({"variable_names": s}, status=status.HTTP_201_CREATED)
 
 
@@ -53,9 +56,9 @@ def solve_game(request):
     file = open(file_name, "w+")
     file.write(str(game_text))
     file.close()
-    include_nash = "include_nash" in config,
-    include_sequential = "include_sequential" in config,
-    restrict_belief = "restrict_belief" in config,
+    include_nash = "include_nash" in config
+    include_sequential = "include_sequential" in config
+    restrict_belief = "restrict_belief" in config
     restrict_strategy = "restrict_strategy" in config
     g = seq_solver.import_game(file_name)
     lines = variable_overwrites.strip().split("\n")
