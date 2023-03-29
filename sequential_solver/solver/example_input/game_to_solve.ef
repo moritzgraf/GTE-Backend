@@ -1,11 +1,19 @@
 player 1 name 1
 player 2 name 2
-level 0 node 1 player 1 
-level 2 node 1 xshift -6.44 from 0,1 move A 
-level 2 node 2 xshift 0.92 from 0,1 move B 
-level 4 node 1 xshift -1.84 from 2,2 move a payoffs 7 6
-level 4 node 2 xshift 1.84 from 2,2 move b payoffs 5 16
-level 4 node 3 xshift -1.84 from 2,1 move a payoffs 17 16
-level 4 node 4 xshift 1.84 from 2,1 move b payoffs 12 18
-level 2 node 3 xshift 6.44 from 0,1 move C payoffs 2 7
-iset 2,1 2,2 player 2
+level 0 node 1 player 0 
+level 2 node 1 xshift -4.6 from 0,1 move \frac{1}{2} 
+level 2 node 2 xshift 4.6 from 0,1 move \frac{1}{2} 
+level 4 node 1 xshift -2.3 from 2,2 move a 
+level 4 node 2 xshift 2.3 from 2,2 move b 
+level 4 node 3 xshift -2.3 from 2,1 move A 
+level 4 node 4 xshift 2.3 from 2,1 move B 
+level 6 node 1 xshift -1.15 from 4,1 move A payoffs 3 1
+level 6 node 2 xshift 1.15 from 4,1 move B payoffs 0 0
+level 6 node 3 xshift -1.15 from 4,2 move A payoffs 0 0
+level 6 node 4 xshift 1.15 from 4,2 move B payoffs 1 3
+level 6 node 5 xshift -1.15 from 4,3 move a payoffs 3 1
+level 6 node 6 xshift 1.15 from 4,3 move b payoffs 0 0
+level 6 node 7 xshift -1.15 from 4,4 move a payoffs 0 0
+level 6 node 8 xshift 1.15 from 4,4 move b payoffs 1 3
+iset 4,3 4,4 2,2 player 2
+iset 2,1 4,1 4,2 player 1

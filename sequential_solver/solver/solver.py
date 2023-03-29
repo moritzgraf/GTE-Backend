@@ -870,9 +870,9 @@ def wolfram_solve_equations(g, result, include_se, session=None):
     session.evaluate(wlexpr(redef_inputform))
     expr_var = "{" + link_strings(var, ", ") + "}"
     ne_expr_var = "{" + link_strings(var_n, ", ") + "}"
-    nash_call = "CylindricalDecomposition[" + eq_n + ", " + ne_expr_var + ", \"Function\"]"
+    nash_call = "CylindricalDecomposition[" + eq_n + ", " + ne_expr_var + "]"
     session.evaluate(wlexpr("{nashtime, nashresult} = AbsoluteTiming[" + nash_call + "]"))
-    session.evaluate(wlexpr("nes = BooleanConvert[Normal[nashresult]]"))
+    session.evaluate(wlexpr("nes = BooleanConvert[Simplify[nashresult]]"))
     session.evaluate(wlexpr("NE = If[Head[nes] == Or, List @@ nes, {nes}, {nes}]"))
     nash_solutions = session.evaluate(wlexpr("Map[Function[x, ToString[x, InputForm]], NE]"))
     if LOG: print("Nash Solutions: ", nash_solutions, len(nash_solutions))
@@ -883,7 +883,6 @@ def wolfram_solve_equations(g, result, include_se, session=None):
         session.evaluate(wlexpr("newEQ = BooleanConvert[Simplify[seqresult]]"))
         session.evaluate(wlexpr("SE = If[Head[newEQ] == Or, List @@ newEQ, {newEQ}, {newEQ}]"))
         seq_solutions = session.evaluate(wlexpr("Map[Function[x, ToString[x, InputForm]], SE]"))
-        if LOG: print("SE Solutions: ", seq_solutions, len(seq_solutions))
 
     wolfram_solutions = nash_solutions + seq_solutions
     solutions = []
