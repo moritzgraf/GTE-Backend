@@ -13,15 +13,20 @@ from gte_backend.settings import BASE_DIR
 import queue
 import signal
 import threading
-from time import sleep
+import uuid
+import time
 from wolframclient.evaluation import WolframLanguageSession
 
 import sequential_solver.solver.gametree
 import sequential_solver.solver.solver as seq_solver
+RESPONSE_TIMEOUT = 10
 WOLFRAM_TIMEOUT = 5 * 60
-wolframQueue = queue.Queue()
-queue_running = False
+WOLFRAM_QUEUE_MAXSIZE = 20
+wolframQueue = queue.Queue(WOLFRAM_QUEUE_MAXSIZE)
+wolframQueueCounter = 0
 wolfram_thread = None
+statusManager = None
+
 
 @api_view(["POST"])
 @authentication_classes(())
@@ -47,11 +52,49 @@ def read_game(request):
 @api_view(["POST"])
 @authentication_classes(())
 @permission_classes((AllowAny, ))
+def respond_status(request):
+    global statusManager
+    if not statusManager:
+        statusManager = StatusManager()
+    time.sleep(1)
+    id = request.POST.get("id")
+    _, solver_status, result = statusManager.get(id)
+    active = True
+    if solver_status in ["Completed", "Aborted", "Error"]:
+        active = False
+        statusManager.set(id, time=-1)
+    elif not solver_status == "Unknown":
+        statusManager.set(id, time=time.time())
+
+    if solver_status == "Queue":
+        s = result.split(";", 1)
+        old_position, old_counter = int(s[0]), int(s[1])
+        new_counter = wolframQueueCounter
+        if old_counter > new_counter:
+            new_counter += (2 * WOLFRAM_QUEUE_MAXSIZE)
+        est_queue_position = old_position - (old_counter - new_counter)
+        result = "Waiting for access in Queue for access to Wolfram at position " + str(est_queue_position + 1)
+    return Response({"solver_output": result, "solver_status": solver_status, "solver_active": active, "expected_id": id}, status=status.HTTP_201_CREATED)
+
+
+@api_view(["POST"])
+@authentication_classes(())
+@permission_classes((AllowAny, ))
 def solve_game(request):
+    global statusManager
+    if not statusManager:
+        statusManager = StatusManager()
     game_text = request.POST.get('game_text')
     config = request.POST.get('config')
     variable_overwrites = request.POST.get('variable_overwrites')
-    print(config)
+    id = str(uuid.uuid4())
+    statusManager.set(id, time=time.time(), status="Calculating", text="Calculating equilibria equations...")
+    thread = threading.Thread(target=start_solving, args=(game_text, config, variable_overwrites, id))
+    thread.start()
+    return Response({"id": id}, status=status.HTTP_202_ACCEPTED)
+
+
+def start_solving(game_text, config, variable_overwrites, id):
     file_name = os.path.join(BASE_DIR, "sequential_solver/solver/example_input/game_to_solve.ef")
     file = open(file_name, "w+")
     file.write(str(game_text))
@@ -63,7 +106,6 @@ def solve_game(request):
     g = seq_solver.import_game(file_name)
     lines = variable_overwrites.strip().split("\n")
     for line in lines:
-        print(line)
         split = line.split(":", 1)
         if len(split) > 1:
             var = split[0].strip()
@@ -75,63 +117,117 @@ def solve_game(request):
                                      onlynash = not include_sequential,
                                      weak_filter=False,
                                      ed_method="dd")
-
     global wolfram_thread
     if not wolfram_thread or not wolfram_thread.is_alive():
         wolfram_thread = threading.Thread(target=wolfram_queue, args=())
         wolfram_thread.start()
 
-    element = [(g, equations, include_sequential), None, "waiting"]
+    statusManager.set(id, status="Queue", text=str(wolframQueue.qsize()) + ";" + str(wolframQueueCounter))
+    element = [(g, equations, include_sequential, include_nash), id]
     wolframQueue.put(element)
-    while element[2] == "waiting":
-        sleep(1)
-    if element[2] == "completed":
-        g.solutions = element[1]
+
+
+class StatusManager:
+
+    def __init__(self):
+        self.statusManager = queue.Queue()
+        self.status_dict = {}
+        self.worker_thread = None
+
+    def start(self):
+        if not self.worker_thread or not self.worker_thread.is_alive():
+            self.worker_thread = threading.Thread(target=self.worker, args=())
+            self.worker_thread.start()
+
+    def get(self, id):
+        job = [id, "get", None]
+        self.statusManager.put(job)
+        self.start()
+        while not job[2]:
+            continue
+        return job[2]
+
+    def set(self, id, time="", status="", text=""):
+        job = [id, "set", [time, status, text]]
+        self.statusManager.put(job)
+        self.start()
+
+    def worker(self):
+        while True:
+            job = self.statusManager.get()
+            id, mode, value = job
+            if mode == "set":
+                if id in self.status_dict:
+                    t, status, text = self.status_dict[id]
+                    if value[0]:
+                        t = value[0]
+                    if value[1]:
+                        status = value[1]
+                    if value[2]:
+                        text = value[2]
+                    self.status_dict[id] = [t, status, text]
+                else:
+                    self.status_dict[id] = value.copy()
+            elif mode == "get":
+                if id in self.status_dict:
+                    job[2] = self.status_dict[id]
+                else:
+                    job[2] = [-1, "Unknown", "Request Lost"]
+            self.statusManager.task_done()
+            timed_out = []
+            for id in self.status_dict:
+                t = self.status_dict[id][0]
+                if t == -1 or time.time() - t > RESPONSE_TIMEOUT:
+                    timed_out.append(id)
+            for id in timed_out:
+                del self.status_dict[id]
+
+
+def wolfram_queue():
+    global statusManager
+    session = WolframLanguageSession()
+    while True:
+        element = wolframQueue.get()
+        id = element[1]
+        wolfram_timeout_event = threading.Event()
+        response_timeout_event = threading.Event()
+        statusManager.set(id, status="Solving", text="Solving equations using Wolfram")
+        thread = threading.Thread(target=worker, args=(element, session, wolfram_timeout_event, response_timeout_event))
+        thread.start()
+        t = 0
+        while thread.is_alive():
+            if t > WOLFRAM_TIMEOUT:
+                wolfram_timeout_event.set()
+                session.terminate()
+                break
+            timestamp, _, _ = statusManager.get(id)
+            if timestamp == -1:
+                response_timeout_event.set()
+                session.terminate()
+                break
+            time.sleep(1)
+            t += 1
+        wolframQueue.task_done()
+        global wolframQueueCounter
+        wolframQueueCounter = wolframQueueCounter + 1 % (2 * WOLFRAM_QUEUE_MAXSIZE)
+    session.terminate()
+
+
+def worker(element, session, wolfram_timeout_event, response_timeout_event):
+    global statusManager
+    g, equations, include_sequential, include_nash = element[0]
+    id = element[1]
+    try:
+        g.solutions = seq_solver.wolfram_solve_equations(g, equations, include_sequential, session)
         include_types = []
         if include_nash:
             include_types.append("Nash Equilibria")
         if include_sequential:
             include_types.append("Sequential Equilibria")
         result = g.print_solutions(long=False, include_types=include_types)
-    elif element[2] == "timeout":
-        result = "Request timed out performing mathematica calculations after " + str(WOLFRAM_TIMEOUT) + "s"
-    else:
-        result = "Something went wrong: " + str(element[1])
-
-    return Response({"solver_output": result}, status=status.HTTP_201_CREATED)
-
-
-def wolfram_queue():
-    session = WolframLanguageSession()
-    while True:
-        element = wolframQueue.get()
-        completion_event = threading.Event()
-        timeout_event = threading.Event()
-        thread = threading.Thread(target=worker, args=(element, session, completion_event, timeout_event))
-        thread.start()
-        t = 0
-        while thread.is_alive() and not completion_event.isSet():
-            if t > WOLFRAM_TIMEOUT:
-                timeout_event.set()
-                session.terminate()
-                break
-            sleep(1)
-            t += 1
-        wolframQueue.task_done()
-    session.terminate()
-
-
-def worker(element, session, completion_event, timeout_event):
-    args = element[0]
-    try:
-        solutions = seq_solver.wolfram_solve_equations(*args, session)
-        completion_event.set()
-        element[1] = solutions
-        element[2] = "completed"
+        statusManager.set(id, status="Completed", text=result)
     except Exception as e:
-        if timeout_event.isSet():
-            element[1] = ""
-            element[2] = "timeout"
-        else:
-            element[1] = e
-            element[2] = "error"
+        if wolfram_timeout_event.isSet():
+            statusManager.set(id, status="Aborted", text="Wolfram calculations timed out.")
+        elif not response_timeout_event.isSet():
+            statusManager.set(id, status="Error", text=str(e))
