@@ -278,7 +278,7 @@ def import_gambit(filename):
 '''
 
 
-def extreme_directions_alt(A):
+def extreme_directions_alt(A, timeout):
     start_time = time.time()
     if LOG: print("alternative method: ")
     if LOG: print(A)
@@ -293,6 +293,8 @@ def extreme_directions_alt(A):
     if LOG: print("initial extreme directions found: ", len(ed))
     pairs = list(itertools.combinations(ed, 2))
     while len(pairs) != 0:
+        if timeout != -1 and time.time() - start_time > timeout:
+            return "Timeout"
         if LOG: print(len(pairs), len(ed))
         pair = pairs.pop(0)
         u, v = pair
@@ -321,7 +323,8 @@ def extreme_directions_alt(A):
     return ed
 
 
-def extreme_directions_naive(A):
+def extreme_directions_naive(A, timeout):
+    start_time = time.time()
     if LOG: print("base method: ")
     if LOG: print(A)
     m, n = A.shape
@@ -335,6 +338,8 @@ def extreme_directions_naive(A):
     # ed_dict_new = {}
     ed = []
     for comb in combinations:
+        if timeout != -1 and time.time() - start_time > timeout:
+            return "Timeout"
         # ed_dict[comb] = []
         # ed_dict_new[comb] = []
         C = np.diag(comb)
@@ -359,7 +364,7 @@ def extreme_directions_naive(A):
     return ed  # , ed_dict, ed_dict_new
 
 
-def extreme_directions_dd(A):
+def extreme_directions_dd(A, timeout):
     start_time = time.time()
     if LOG: print("new method: ")
     if LOG: print(A)
@@ -388,6 +393,8 @@ def extreme_directions_dd(A):
         new_base_cones = {}
 
         for base in base_cones:
+            if timeout != -1 and time.time() - start_time > timeout:
+                return "Timeout"
             count += 2
             U_old = base_cones[base]
             # if LOG : print("cone ", base, " has ", len(U_old), " extreme directions")
@@ -482,7 +489,7 @@ def has_potential(base, ed, i):
     return False
 
 
-def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_filter, ed_method):
+def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_filter, ed_method, ed_timeout=-1):
     variable_map = g.variable_map.copy()  # <Node> : I1N3b, <Action> : I1A2p
     variables = g.variables.copy()
     sub_map = substitutions(g, variable_map)  # I1N3b : (1-I1N1b-I1N2b)
@@ -694,15 +701,16 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
             # find extreme all relevant extreme directions of A
             eds = []
             if ed_method == "dd":
-                eds = extreme_directions_dd(A.transpose())
+                eds = extreme_directions_dd(A.transpose(), ed_timeout)
             elif ed_method == "alt":
-                eds = extreme_directions_alt(A.transpose())
+                eds = extreme_directions_alt(A.transpose(), ed_timeout)
             elif ed_method == "naive":
-                eds = extreme_directions_naive(A.transpose())
+                eds = extreme_directions_naive(A.transpose(), ed_timeout)
             else:
                 # default for wrong argument
-                eds = extreme_directions_dd(A.transpose())
-
+                eds = extreme_directions_dd(A.transpose(), ed_timeout)
+            if eds == "Timeout":
+                return "Timeout"
             # each extreme direction defines an equation
             if LOG: print("alpha: ", alpha)
             if LOG: print("gamma: ", gamma)

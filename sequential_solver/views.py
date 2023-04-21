@@ -20,6 +20,7 @@ from wolframclient.evaluation import WolframLanguageSession
 import sequential_solver.solver.gametree
 import sequential_solver.solver.solver as seq_solver
 RESPONSE_TIMEOUT = 10
+EQUATIONS_TIMEOUT = 3
 WOLFRAM_TIMEOUT = 5 * 60
 WOLFRAM_QUEUE_MAXSIZE = 20
 wolframQueue = queue.Queue(WOLFRAM_QUEUE_MAXSIZE)
@@ -116,15 +117,19 @@ def start_solving(game_text, config, variable_overwrites, id):
                                      restrict_strategy=restrict_strategy,
                                      onlynash = not include_sequential,
                                      weak_filter=False,
-                                     ed_method="dd")
-    global wolfram_thread
-    if not wolfram_thread or not wolfram_thread.is_alive():
-        wolfram_thread = threading.Thread(target=wolfram_queue, args=())
-        wolfram_thread.start()
+                                     ed_method="dd",
+                                     ed_timeout=EQUATIONS_TIMEOUT)
+    if equations == "Timeout":
+        statusManager.set(id, status="Aborted", text="Calculation of equations timed out")
+    else:
+        global wolfram_thread
+        if not wolfram_thread or not wolfram_thread.is_alive():
+            wolfram_thread = threading.Thread(target=wolfram_queue, args=())
+            wolfram_thread.start()
 
-    statusManager.set(id, status="Queue", text=str(wolframQueue.qsize()) + ";" + str(wolframQueueCounter))
-    element = [(g, equations, include_sequential, include_nash), id]
-    wolframQueue.put(element)
+        statusManager.set(id, status="Queue", text=str(wolframQueue.qsize()) + ";" + str(wolframQueueCounter))
+        element = [(g, equations, include_sequential, include_nash), id]
+        wolframQueue.put(element)
 
 
 class StatusManager:
@@ -228,6 +233,6 @@ def worker(element, session, wolfram_timeout_event, response_timeout_event):
         statusManager.set(id, status="Completed", text=result)
     except Exception as e:
         if wolfram_timeout_event.isSet():
-            statusManager.set(id, status="Aborted", text="Wolfram calculations timed out.")
+            statusManager.set(id, status="Aborted", text="Solving of equations timed out.")
         elif not response_timeout_event.isSet():
             statusManager.set(id, status="Error", text=str(e))
