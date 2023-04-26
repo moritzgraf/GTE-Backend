@@ -489,7 +489,7 @@ def has_potential(base, ed, i):
     return False
 
 
-def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_filter, ed_method, ed_timeout=-1):
+def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, filter, ed_method, ed_timeout=-1):
     variable_map = g.variable_map.copy()  # <Node> : I1N3b, <Action> : I1A2p
     variables = g.variables.copy()
     sub_map = substitutions(g, variable_map)  # I1N3b : (1-I1N1b-I1N2b)
@@ -518,14 +518,14 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
         factors = []
         for a in t.path:
             factors.append(variable_map[a])
-        product = link_strings(factors, "*")
+        product = "*".join(factors)
         if LOG: print(t, " ", product, " ", t.outcome)
         for i in range(g.players):
             player_summands[i].append(t.outcome[i] + "*" + product)
 
     equations_utility = []
     for i in range(g.players):
-        game_utility[i] = link_strings(player_summands[i], "+")
+        game_utility[i] = "+".join(player_summands[i])
         equations_utility.append("P" + str(i + 1) + "u == " + game_utility[i])
         sub_map["P" + str(i + 1) + "u"] = game_utility[i]
 
@@ -541,6 +541,7 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
         else:
             eq = var + " >= 0"
         equations_nash.append(eq)
+        # equations_seq.append(eq)
 
     belief_vars = []
     # each node belief is positive, ignore chance sets, and only added in seqential equations
@@ -569,8 +570,9 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
             lambda match: sub_map.get(match.group(0)) if match.group(0) in sub_map else match.group(0), g_eq)
         if nash_safe:
             equations_nash.append(g_eq_sub)
+            # equations_seq.append(g_eq_sub)
         else:
-            equations.append(g_eq_sub)
+            equations_seq.append(g_eq_sub)
 
     for infoset in g.infosets:
         if infoset.is_chance():
@@ -579,13 +581,14 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
         probs = []
         for action in infoset.actions:
             probs.append(variable_map[action])
-        prob_eq = link_strings(probs, "+") + "== 1"
+        prob_eq = "+".join(probs) + "== 1"
         equations_nash.append(prob_eq)
+        # equations_seq.append(prob_eq)
         # beliefs at each informationset sum to 1
         beliefs = []
         for node in infoset.nodes:
             beliefs.append(variable_map[node])
-        belief_eq = link_strings(beliefs, "+") + "== 1"
+        belief_eq = "+".join(beliefs) + "== 1"
         equations_seq.append(belief_eq)
 
     if onlynash:
@@ -608,22 +611,22 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                         rem_actions = tnode.path[len(node.path) + 1:]
                         for a in rem_actions:
                             factors.append(variable_map[a])
-                        product = link_strings(factors, "*")
+                        product = "*".join(factors)
                         summands.append(product)
-                    utility[action][node] = "(" + link_strings(summands, "+") + ")"
+                    utility[action][node] = "(" + "+".join(summands) + ")"
             # express believed utility as weighted sum over all nodes and actions
             terms = []
             for action in infoset.actions:
                 for node in infoset.nodes:
                     terms.append(variable_map[node] + "*" + variable_map[action] + "*" + utility[action][node])
-            utility_at_I = "(" + link_strings(terms, "+") + ")"
+            utility_at_I = "(" + "+".join(terms) + ")"
 
             # two equations per action at I:
             for action in infoset.actions:
                 summands = []
                 for node in infoset.nodes:
                     summands.append(variable_map[node] + "*" + utility[action][node])
-                sum = "(" + link_strings(summands, "+") + ")"
+                sum = "(" + "+".join(summands) + ")"
                 # first equation: playing action in I is not better that Is utility
                 equations_seq.append(sum + "-" + utility_at_I + "<= 0")
                 # second equation: either prob of action or difference in utility is 0
@@ -726,11 +729,12 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                     if p < 0:
                         right.append(variable_map[alpha[i]] + "^" + str(-p))
                         left.append(variable_map[gamma[i]] + "^" + str(-p))
-                    if LOG: print(left, " == ", right)
-                equations_seq.append(link_strings(left, " * ") + " == " + link_strings(right, " * "))
+                if LOG: print(left, " == ", right)
+                equations_seq.append(" * ".join(left) + " == " + " * ".join(right))
 
     # nash rationality
-    if weak_filter:
+    nash_strategies = []
+    if filter == "weak":
         # following version of nash rationality only considers single deviations, not any deviation
         # resulting eqilibria are not necessarily nash equilibria, resulting in a weaker filter
         # but number of equations is no longer exponential in number of actions
@@ -749,23 +753,24 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                     factors = [str(tnode.outcome[player])]
                     for a in tnode.path:
                         factors.append(variable_map[a])
-                    product = link_strings(factors, "*")
+                    product = "*".join(factors)
                     terminal_utilities.append(product)
                     for action in infoset.actions:
                         if action in tnode.path:
                             mod_product = product.replace(variable_map[action], "1")
                             mod_terminal_utilities[action].append(mod_product)
 
-            base_utiltiy = "(" + link_strings(terminal_utilities, "+") + ")"
+            base_utiltiy = "(" + "+".join(terminal_utilities) + ")"
             for action in infoset.actions:
-                mod_utility = "(" + link_strings(mod_terminal_utilities[action], "+") + ")"
+                mod_utility = "(" + "+".join(mod_terminal_utilities[action]) + ")"
                 # two equations for every action:
                 utility_diff = "(" + mod_utility + "-" + base_utiltiy + ")"
                 # if the action is played, utility difference is 0
                 equations_nash.append(variable_map[action] + "*" + utility_diff + "==0")
                 # utility difference is always <= 0
                 equations_nash.append(utility_diff + "<= 0")
-    else:
+    elif filter == "full":
+
         player_infoset_actions = []
         for i in range(g.players):
             player_infoset_actions.append([])
@@ -775,24 +780,6 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
             if infoset.player != -1:
                 player_infoset_actions[infoset.player].append(infoset.actions)
 
-        '''
-        # nash strategies are pure strategies of that player that have different outcomes
-        # can be obtained from combinations of actions of that player in terminal histories
-        nash_strategies = []
-        for i in range(g.players):
-            nash_strategies.append(set())
-
-        for tnode in g.terminals:
-            for i in range(g.players):
-                lst = []
-                for a in tnode.path:
-                    if a.infoset.player == i:
-                        lst.append(a)
-                if len(lst) != 0:
-                    s = tuple(lst)
-                    nash_strategies[i].add(s)
-
-        '''
         nash_strategies = [[]] * (g.players + 1)
         for i in range(g.players):
             nash_strategies[i] = itertools.product(*player_infoset_actions[i])
@@ -810,7 +797,54 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
                     product.append(variable_map[action])
                 if len(product) == 0:
                     continue
-                s_prob = link_strings(product, "*")
+                s_prob = "*".join(product)
+                if LOG: print("player ", i, " strategy: ", s_prob)
+                # 2 equations per pure strategy:
+                # playing pure strategy does not have more utility than equilibrium strategy
+                equations_nash.append("(" + mod_utility + ")-(" + player_utility + ") <= 0")
+                # if strategy is played, it has the same utility as equilibrium strategy
+                equations_nash.append(s_prob + "*((" + mod_utility + ")-(" + player_utility + ")) == 0")
+    elif filter == "alt":
+        # nash strategies are pure strategies of that player that have a different set of possible outcomes
+        # can be obtained from combinations of actions of that player in terminal histories
+
+        nash_strategies = []
+        for i in range(g.players):
+            nash_strategies.append([])
+        for tnode in g.terminals:
+            for i in range(g.players):
+                action_set = set()
+                for a in tnode.path:
+                    if a.infoset.player == i:
+                        action_set.add(a)
+                if len(action_set) == 0:
+                    continue
+                new = True
+                for j in range(len(nash_strategies[i])):
+                    if action_set.issubset(nash_strategies[i][j]):
+                        new = False
+                        break
+                    elif nash_strategies[i][j].issubset(action_set):
+                        new = False
+                        nash_strategies[i][j] = action_set
+                        break
+                if new:
+                    nash_strategies[i].append(action_set)
+        for i in range(g.players):
+            player_utility = game_utility[i]
+            for strategy in nash_strategies[i]:
+                mod_utility = player_utility
+                product = []
+                for action in strategy:
+                    mod_utility = mod_utility.replace(variable_map[action], "1")
+                    for a in action.infoset.actions:
+                        if not a == action:
+                            mod_utility = mod_utility.replace(variable_map[a], "0")
+                    product.append(variable_map[action])
+                if len(product) == 0:
+                    continue
+                s_prob = "*".join(product)
+                if LOG: print("player ", i, " strategy: ", s_prob)
                 # 2 equations per pure strategy:
                 # playing pure strategy does not have more utility than equilibrium strategy
                 equations_nash.append("(" + mod_utility + ")-(" + player_utility + ") <= 0")
@@ -819,9 +853,9 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, weak_f
 
     if LOG: print(len(equations_nash), " equations for nash equilibria")
     if LOG: print(len(equations_seq), " equations for sequential equilibria")
-    equations_seq = link_strings(equations_seq, " && ")
-    equations_nash = link_strings(equations_nash, " && ")
-    equations_utility = link_strings(equations_utility, " && ")
+    equations_seq = " && ".join(equations_seq)
+    equations_nash = " && ".join(equations_nash)
+    equations_utility = " && ".join(equations_utility)
 
     return equations_seq, equations_nash, equations_utility, variable_map, resub_map, variables, variables_nash
 
@@ -835,24 +869,20 @@ def substitutions(g, variable_map):
         lst = ["1"]
         for node in infoset.nodes:
             lst.append(variable_map[node])
-        sub = "(" + link_strings(lst[:-1], "-") + ")"
+        sub = "(" + "-".join(lst[:-1]) + ")"
         # substitute_map[infoset.nodes[-1]] = sub
         substitute_map[variable_map[infoset.nodes[-1]]] = sub
         lst = ["1"]
         for action in infoset.actions:
             lst.append(variable_map[action])
-        sub = "(" + link_strings(lst[:-1], "-") + ")"
+        sub = "(" + "-".join(lst[:-1]) + ")"
         # substitute_map[infoset.actions[-1]] = sub
         substitute_map[variable_map[infoset.actions[-1]]] = sub
 
     return substitute_map
 
 
-def link_strings(lst, sep):
-    return sep.join(lst)
-
-
-def wolfram_solve_equations(g, result, include_se, session=None):
+def wolfram_solve_equations(g, result, include_se, include_ne, session=None):
     eq, eq_n, eq_u, var_map, resub_map, var, var_n = result
 
     if not session:
@@ -876,17 +906,20 @@ def wolfram_solve_equations(g, result, include_se, session=None):
                     ]\n
                 Protect[Inequality];\n'''
     session.evaluate(wlexpr(redef_inputform))
-    expr_var = "{" + link_strings(var, ", ") + "}"
-    ne_expr_var = "{" + link_strings(var_n, ", ") + "}"
+    expr_var = "{" + ", ".join(var) + "}"
+    ne_expr_var = "{" + ", ".join(var_n) + "}"
     nash_call = "CylindricalDecomposition[" + eq_n + ", " + ne_expr_var + "]"
-    session.evaluate(wlexpr("{nashtime, nashresult} = AbsoluteTiming[" + nash_call + "]"))
-    session.evaluate(wlexpr("nes = BooleanConvert[Simplify[nashresult]]"))
-    session.evaluate(wlexpr("NE = If[Head[nes] == Or, List @@ nes, {nes}, {nes}]"))
-    nash_solutions = session.evaluate(wlexpr("Map[Function[x, ToString[x, InputForm]], NE]"))
-    if LOG: print("Nash Solutions: ", nash_solutions, len(nash_solutions))
+    print(nash_call)
+    nash_solutions = ()
+    if include_ne:
+        session.evaluate(wlexpr("{nashtime, nashresult} = AbsoluteTiming[" + nash_call + "]"))
+        session.evaluate(wlexpr("nes = BooleanConvert[Simplify[nashresult]]"))
+        session.evaluate(wlexpr("NE = If[Head[nes] == Or, List @@ nes, {nes}, {nes}]"))
+        nash_solutions = session.evaluate(wlexpr("Map[Function[x, ToString[x, InputForm]], NE]"))
+        if LOG: print("Nash Solutions: ", nash_solutions, len(nash_solutions))
     seq_solutions = ()
     if include_se:
-        seq_call = "CylindricalDecomposition[nashresult && " + eq + ", " + expr_var + "]"
+        seq_call = "CylindricalDecomposition[" + eq_n + " && " + eq + " , " + expr_var + "]"
         session.evaluate(wlexpr("{seqtime, seqresult} = AbsoluteTiming[" + seq_call + "]"))
         session.evaluate(wlexpr("newEQ = BooleanConvert[Simplify[seqresult]]"))
         session.evaluate(wlexpr("SE = If[Head[newEQ] == Or, List @@ newEQ, {newEQ}, {newEQ}]"))
@@ -994,8 +1027,8 @@ def write_wolframscript(result, output_file_name, header, pytime, mformat):
     f.write("\nSE = {}")
     f.write("\nNE = {}")
     f.write("\nsetime = 0")
-    expr_var = "{" + link_strings(var, ", ") + "}"
-    ne_expr_var = "{" + link_strings(var_n, ", ") + "}"
+    expr_var = "{" + ", ".join(var) + "}"
+    ne_expr_var = "{" + ", ".join(var_n) + "}"
     nash_call = "CylindricalDecomposition[" + eq_n + ", " + ne_expr_var + ", \"Function\"]"
     f.write("\n{nashtime, nashresult} = AbsoluteTiming[" + nash_call + "]")
     f.write("\nnes = BooleanConvert[Normal[nashresult]];")
@@ -1059,7 +1092,7 @@ def solve(g,
           include_sequential=False,
           restrict_belief=False,
           restrict_strategy=False,
-          weak_filter=False,
+          filter="full",
           extreme_directions="dd"):
     s = ""
     if include_header:
@@ -1074,10 +1107,12 @@ def solve(g,
             header += "\n beliefs restricted to {0, 1}"
         if restrict_strategy:
             header += "\n strategies restricted to {0, 1}"
-        if weak_filter:
+        if filter == "weak":
             header += "\n filtered using only local deviation nash equilibria"
-        else:
+        elif filter == "full":
             header += "\n filtered using full nash rationality"
+        elif filter == "alt":
+            header += "\n filtered using full nash rationality (alternative method)"
         s += header + "\n\n"
 
     start_time = time.time()
@@ -1085,7 +1120,7 @@ def solve(g,
                                      restrict_belief=restrict_belief,
                                      restrict_strategy=restrict_strategy,
                                      onlynash=not include_sequential,
-                                     weak_filter=weak_filter,
+                                     filter=filter,
                                      ed_method=extreme_directions)
     eq_time = time.time()
     if create_wls:
@@ -1093,7 +1128,7 @@ def solve(g,
             output_file = "solution.wls"
         write_wolframscript(equations, output_file, header, str(eq_time - start_time), "InputForm")
     else:
-        g.solutions = wolfram_solve_equations(g, equations, include_sequential)
+        g.solutions = wolfram_solve_equations(g, equations, include_sequential, include_nash)
         solve_time = time.time()
         include_types = []
         if include_nash:
@@ -1122,14 +1157,14 @@ def solve_from_file(file_name,
                     include_sequential=False,
                     restrict_belief=False,
                     restrict_strategy=False,
-                    weak_filter=False,
+                    filter="full",
                     extreme_directions="dd"):
     g = import_game(file_name)
 
     return solve(g, output_file=output_file, create_wls=create_wls, long_output=long_output,
                  include_header=include_header, include_time=include_time, include_nash=include_nash,
                  include_sequential=include_sequential, restrict_belief=restrict_belief,
-                 restrict_strategy=restrict_strategy, weak_filter=weak_filter, extreme_directions=extreme_directions)
+                 restrict_strategy=restrict_strategy, filter=filter, extreme_directions=extreme_directions)
 
 
 def import_game(file_name):
@@ -1171,9 +1206,14 @@ if __name__ == '__main__':
     parser.add_argument("-rs", "--restrict_strategy",
                         help="restricts to equilibria where all action probabilities are in {0, 1}",
                         action="store_true")
-    parser.add_argument("-wf", "--weak_filter",
-                        help="instead of filtering nash equilibria, only filter one deviation nash equilibria",
-                        action="store_true")
+
+    parser.add_argument("-f", "--filter",
+                        help="choose method to compute all extreme directions:\n"
+                             "'full' to filter using regular nash equilibria\n"
+                             "'weak' to filter using weak nash equilibria (only single action deviations)\n"
+                             "'alt' to filter using an experimental method (should be equivalent to ne)",
+                        type=str,
+                        default="ne")
     parser.add_argument("-ed", "--extreme_directions",
                         help="choose method to compute all extreme directions:\n"
                              "'dd' to use the modified double description with pruning (default)\n"
@@ -1202,7 +1242,7 @@ if __name__ == '__main__':
     include_sequential = args.equilibria in ('seq', 'full')
     restrict_belief = args.restrict_belief
     restrict_strategy = args.restrict_strategy
-    weak_filter = args.weak_filter
+    filter = args.filter
     extreme_directions = args.extreme_directions
     # create wls: write wls file for later use instead of solving it
     # currently not supported
@@ -1211,7 +1251,7 @@ if __name__ == '__main__':
     s = solve_from_file(file_name, output_file=output_file, create_wls=create_wls, long_output=long_output,
                         include_header=include_header, include_time=include_time, include_nash=include_nash,
                         include_sequential=include_sequential, restrict_belief=args.restrict_belief,
-                        restrict_strategy=args.restrict_strategy, weak_filter=args.weak_filter,
+                        restrict_strategy=args.restrict_strategy, filter=args.filter,
                         extreme_directions=args.extreme_directions)
 
     '''

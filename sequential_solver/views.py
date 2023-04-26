@@ -20,8 +20,8 @@ from wolframclient.evaluation import WolframLanguageSession
 import sequential_solver.solver.gametree
 import sequential_solver.solver.solver as seq_solver
 RESPONSE_TIMEOUT = 10
-EQUATIONS_TIMEOUT = 3
-WOLFRAM_TIMEOUT = 5 * 60
+EQUATIONS_TIMEOUT = 1 * 60
+WOLFRAM_TIMEOUT = 1 * 60
 WOLFRAM_QUEUE_MAXSIZE = 20
 wolframQueue = queue.Queue(WOLFRAM_QUEUE_MAXSIZE)
 wolframQueueCounter = 0
@@ -116,7 +116,7 @@ def start_solving(game_text, config, variable_overwrites, id):
                                      restrict_belief=restrict_belief,
                                      restrict_strategy=restrict_strategy,
                                      onlynash = not include_sequential,
-                                     weak_filter=False,
+                                     filter="full",
                                      ed_method="dd",
                                      ed_timeout=EQUATIONS_TIMEOUT)
     if equations == "Timeout":
@@ -223,7 +223,7 @@ def worker(element, session, wolfram_timeout_event, response_timeout_event):
     g, equations, include_sequential, include_nash = element[0]
     id = element[1]
     try:
-        g.solutions = seq_solver.wolfram_solve_equations(g, equations, include_sequential, session)
+        g.solutions = seq_solver.wolfram_solve_equations(g, equations, include_sequential, include_nash, session)
         include_types = []
         if include_nash:
             include_types.append("Nash Equilibria")
