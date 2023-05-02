@@ -1,32 +1,11 @@
 player 1 name 1
 player 2 name 2
-player 3 name 3
 level 0 node 1 player 1 
-level 2 node 1 xshift -7.62 from 0,1 move A 
-level 2 node 2 xshift 1.58 from 0,1 move B 
-level 4 node 1 player 3 xshift -1.44 from 2,1 move a 
-level 4 node 2 player 3 xshift 1.44 from 2,1 move b 
-level 4 node 3 player 3 xshift -2.87 from 2,2 move a 
-level 4 node 4 player 3 xshift 2.88 from 2,2 move b 
-level 2 node 3 xshift 7.62 from 0,1 move C payoffs 2 19 -21
-level 6 node 1 xshift -0.57 from 4,1 move L payoffs 8 9 -17
-level 6 node 2 xshift 0.58 from 4,1 move M payoffs 7 2 -9
-level 6 node 3 xshift -1.15 from 4,2 move L payoffs 3 6 -9
-level 6 node 4 xshift 0 from 4,2 move M payoffs 8 3 -11
-level 8 node 1 xshift -3.16 from 4,3 move L 
-level 8 node 2 xshift 0.29 from 4,3 move M 
-level 8 node 3 xshift -3.16 from 4,4 move L 
-level 8 node 4 xshift 0.29 from 4,4 move M 
-level 10 node 1 xshift -0.57 from 8,4 move c payoffs 15 12 -27
-level 10 node 2 xshift 0.58 from 8,4 move d payoffs 1 3 -4
-level 10 node 3 xshift -0.57 from 8,3 move c payoffs 5 2 -7
-level 10 node 4 xshift 0.58 from 8,3 move d payoffs 0 13 -13
-level 10 node 5 xshift -0.57 from 8,2 move c payoffs 16 18 -34
-level 10 node 6 xshift 0.58 from 8,2 move d payoffs 4 15 -19
-level 10 node 7 xshift -0.57 from 8,1 move c payoffs 1 0 -1
-level 10 node 8 xshift 0.58 from 8,1 move d payoffs 6 18 -24
-level 6 node 5 xshift 1.15 from 4,2 move N payoffs 1 12 -13
-level 6 node 6 xshift 2.01 from 4,3 move O payoffs 14 13 -27
-level 6 node 7 xshift 2.01 from 4,4 move P payoffs 14 0 -14
+level 2 node 1 xshift -9.8 from 0,1 move A 
+level 2 node 2 xshift 1.4 from 0,1 move B 
+level 4 node 1 xshift -2.8 from 2,2 move a payoffs 0 0
+level 4 node 2 xshift 2.8 from 2,2 move b payoffs 1 3
+level 4 node 3 xshift -2.8 from 2,1 move a payoffs 3 1
+level 4 node 4 xshift 2.8 from 2,1 move b payoffs 0 0
+level 2 node 3 xshift 9.8 from 0,1 move C payoffs 2 2
 iset 2,1 2,2 player 2
-iset 8,1 8,2 8,3 8,4 player 2

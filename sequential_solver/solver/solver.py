@@ -11,9 +11,7 @@ import subprocess
 
 import sequential_solver.solver.gametree as gt
 
-# import gambit
-
-LOG = True
+LOG = False
 
 
 def read_ef(filename):
@@ -117,7 +115,7 @@ def read_ef(filename):
                         p, q = re.findall(r'(?<={).+?(?=})', prev_action)
                         action.prob = "(" + p + "/" + q + ")"
                     else:
-                        action.prob = prev_action
+                        action.prob = "(" + prev_action + ")"
                     action.name = "p" + str(len(parent.infoset.actions)) + action.prob
                 else:
                     action.name = prev_action
@@ -909,7 +907,6 @@ def wolfram_solve_equations(g, result, include_se, include_ne, session=None):
     expr_var = "{" + ", ".join(var) + "}"
     ne_expr_var = "{" + ", ".join(var_n) + "}"
     nash_call = "CylindricalDecomposition[" + eq_n + ", " + ne_expr_var + "]"
-    print(nash_call)
     nash_solutions = ()
     if include_ne:
         session.evaluate(wlexpr("{nashtime, nashresult} = AbsoluteTiming[" + nash_call + "]"))
