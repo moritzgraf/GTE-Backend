@@ -191,6 +191,7 @@ class StatusManager:
 def wolfram_queue():
     global statusManager
     session = WolframLanguageSession()
+    session.start()
     while True:
         element = wolframQueue.get()
         id = element[1]
@@ -223,6 +224,7 @@ def worker(element, session, wolfram_timeout_event, response_timeout_event):
     g, equations, include_sequential, include_nash = element[0]
     id = element[1]
     try:
+        session.ensure_started()
         g.solutions = seq_solver.wolfram_solve_equations(g, equations, include_sequential, include_nash, session)
         include_types = []
         if include_nash:

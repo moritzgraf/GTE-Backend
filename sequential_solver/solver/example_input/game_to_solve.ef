@@ -1,12 +1,19 @@
 player 1 name 1
 player 2 name 2
-level 0 node 1 player 1 
-level 2 node 1 xshift -9.8 from 0,1 move A 
-level 2 node 2 xshift 1.4 from 0,1 move B 
-level 4 node 1 xshift -2.8 from 2,2 move a payoffs 0 0
-level 4 node 2 xshift 2.8 from 2,2 move b payoffs 1 3
-level 4 node 3 xshift -2.8 from 2,1 move a payoffs 3 1
-level 4 node 4 xshift 2.8 from 2,1 move b payoffs 0 0
-level 2 node 3 xshift 9.8 from 0,1 move C payoffs 2 2
-iset 2,1 2,2 player 2
-restrict I1A3p > 0
+level 0 node 1 player 0 
+level 2 node 1 xshift -7 from 0,1 move \frac{1}{2} 
+level 2 node 2 xshift 7 from 0,1 move \frac{1}{2} 
+level 4 node 1 xshift -3.5 from 2,1 move A 
+level 4 node 2 xshift 3.5 from 2,1 move B 
+level 4 node 3 xshift -3.5 from 2,2 move A 
+level 4 node 4 xshift 3.5 from 2,2 move B 
+level 6 node 1 xshift -1.75 from 4,4 move g payoffs 14 4
+level 6 node 2 xshift 1.75 from 4,4 move h payoffs 15 4
+level 6 node 3 xshift -1.75 from 4,2 move g payoffs 8 1
+level 6 node 4 xshift 1.75 from 4,2 move h payoffs 8 8
+level 6 node 5 xshift -1.75 from 4,3 move g payoffs 15 0
+level 6 node 6 xshift 1.75 from 4,3 move h payoffs 2 5
+level 6 node 7 xshift -1.75 from 4,1 move g payoffs 2 6
+level 6 node 8 xshift 1.75 from 4,1 move h payoffs 3 14
+iset 2,1 2,2 player 1
+iset 4,1 4,2 4,3 4,4 player 2

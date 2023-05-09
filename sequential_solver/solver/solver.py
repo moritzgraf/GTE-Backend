@@ -906,7 +906,7 @@ def wolfram_solve_equations(g, result, include_se, include_ne, session=None):
     session.evaluate(wlexpr(redef_inputform))
     expr_var = "{" + ", ".join(var) + "}"
     ne_expr_var = "{" + ", ".join(var_n) + "}"
-    nash_call = "CylindricalDecomposition[" + eq_n + ", " + ne_expr_var + "]"
+    nash_call = "CylindricalDecomposition[Rationalize[" + eq_n + ", 0], " + ne_expr_var + "]"
     nash_solutions = ()
     if include_ne:
         session.evaluate(wlexpr("{nashtime, nashresult} = AbsoluteTiming[" + nash_call + "]"))
@@ -916,7 +916,7 @@ def wolfram_solve_equations(g, result, include_se, include_ne, session=None):
         if LOG: print("Nash Solutions: ", nash_solutions, len(nash_solutions))
     seq_solutions = ()
     if include_se:
-        seq_call = "CylindricalDecomposition[" + eq_n + " && " + eq + " , " + expr_var + "]"
+        seq_call = "CylindricalDecomposition[Rationalize[" + eq_n + " && " + eq + ", 0] , " + expr_var + "]"
         session.evaluate(wlexpr("{seqtime, seqresult} = AbsoluteTiming[" + seq_call + "]"))
         session.evaluate(wlexpr("newEQ = BooleanConvert[Simplify[seqresult]]"))
         session.evaluate(wlexpr("SE = If[Head[newEQ] == Or, List @@ newEQ, {newEQ}, {newEQ}]"))
@@ -939,7 +939,7 @@ def wolfram_solve_equations(g, result, include_se, include_ne, session=None):
             expr_vars = expr_var
         # obtain clean solution by additional decompositon (gets rid of 3x == 1 type equations that Simplify created)
         solution_eq = session.evaluate(
-            wlexpr("ToString[CylindricalDecomposition[" + wolfram_solutions[i] + ", " + expr_vars + "], InputForm]"))
+            wlexpr("ToString[CylindricalDecomposition[Rationalize[" + wolfram_solutions[i] + ", 0], " + expr_vars + "], InputForm]"))
 
         constraints = solution_eq.split(" && ")
         # because of the variable ordering in the decomposition
@@ -956,8 +956,8 @@ def wolfram_solve_equations(g, result, include_se, include_ne, session=None):
                 continue
             if LOG: print("resub of " + sub_var)
             expr_vars = "{" + ", ".join(vars + [sub_var]) + "}"
-            call = "subresult = CylindricalDecomposition[" + solution_eq + " && " + resub_map[
-                sub_var] + ", " + expr_vars + "]"
+            call = "subresult = CylindricalDecomposition[Rationalize[" + solution_eq + " && " + resub_map[
+                sub_var] + ", 0], " + expr_vars + "]"
             session.evaluate(wlexpr(call))
             # session.evaluate(wlexpr("resub = BooleanConvert[Simplify[subresult]]"))
             resub_solution = session.evaluate(wlexpr("ToString[subresult, InputForm]"))
@@ -972,7 +972,7 @@ def wolfram_solve_equations(g, result, include_se, include_ne, session=None):
         for j in range(g.players):
             var_u.append("P" + str(j + 1) + "u")
         expr_var_u = "{" + ", ".join(vars + var_u) + "}"
-        utility_call = "CylindricalDecomposition[" + solution_eq + " && " + eq_u + ", " + expr_var_u + "]"
+        utility_call = "CylindricalDecomposition[Rationalize[" + solution_eq + " && " + eq_u + ", 0], " + expr_var_u + "]"
         session.evaluate(wlexpr("{utilitytime, utilityresult} = AbsoluteTiming[" + utility_call + "];"))
         # session.evaluate(wlexpr("utility = BooleanConvert[Simplify[utilityresult]];"))
         utility_solution = session.evaluate(wlexpr("ToString[utilityresult, InputForm]"))
