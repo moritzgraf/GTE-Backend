@@ -24,6 +24,7 @@ def read_ef(filename):
     player_count = 0
     for line in f:
         entry = line.replace("\n", "").split(" ")
+        print("line start: ", entry[0])
         if entry[0] == "player":
             player_count += 1
         elif entry[0] == "level":
@@ -63,26 +64,23 @@ def read_ef(filename):
             player = entry[i + 1]
             infoset_lines.append((player, locset))
         elif entry[0] == "param":
+            print("param line")
             g.parameters.append(entry[1])
             eq = line.partition("restrict ")[2]
             if eq != "":
                 g.equations.append(eq)
         elif entry[0] == "restrict":
+            print("restrict line")
             eq = line.partition("restrict ")[2]
             g.equations.append(eq)
-
+    print("g.equations test: ", g.equations)
     for nodeline in node_lines:
         loc, player, _, _, payoff = nodeline
         node = gt.Node()
         if len(payoff) != 0:
             node.outcome = payoff
             node.is_terminal = True
-        if player != "":
-            infoset = gt.Infoset()
-            infoset.player = int(player) - 1
-            infoset.nodes = [node]
-            node.infoset = infoset
-            g.infosets.append(infoset)
+
         g.nodes.append(node)
         eftg_nodes[loc] = node
 
@@ -93,6 +91,17 @@ def read_ef(filename):
             infoset.nodes.append(eftg_nodes[loc])
             eftg_nodes[loc].infoset = infoset
         g.infosets.append(infoset)
+
+    for nodeline in node_lines:
+        loc, player, _, _, payoff = nodeline
+        node = eftg_nodes[loc]
+        if player != "" and node.infoset == 0:
+            infoset = gt.Infoset()
+            infoset.player = int(player) - 1
+            infoset.nodes = [node]
+            node.infoset = infoset
+            g.infosets.append(infoset)
+
 
     for nodeline in node_lines:
         loc, player, prev_loc, prev_action, payoff = nodeline
@@ -487,7 +496,7 @@ def has_potential(base, ed, i):
     return False
 
 
-def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, filter, ed_method, ed_timeout=-1):
+def equilibria_equations(g, include_sequential, restrict_belief, restrict_strategy, filter, ed_method, ed_timeout=-1):
     variable_map = g.variable_map.copy()  # <Node> : I1N3b, <Action> : I1A2p
     variables = g.variables.copy()
     sub_map = substitutions(g, variable_map)  # I1N3b : (1-I1N1b-I1N2b)
@@ -566,9 +575,10 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, filter
         pattern = re.compile(r'I\d+[AN]\d+[bp]|P\d+u')
         g_eq_sub = pattern.sub(
             lambda match: sub_map.get(match.group(0)) if match.group(0) in sub_map else match.group(0), g_eq)
+        print("additional equation: ", nash_safe, g_eq_sub)
         if nash_safe:
             equations_nash.append(g_eq_sub)
-            # equations_seq.append(g_eq_sub)
+            equations_seq.append(g_eq_sub)
         else:
             equations_seq.append(g_eq_sub)
 
@@ -589,7 +599,7 @@ def equilibria_equations(g, onlynash, restrict_belief, restrict_strategy, filter
         belief_eq = "+".join(beliefs) + "== 1"
         equations_seq.append(belief_eq)
 
-    if onlynash:
+    if not include_sequential:
         equations_seq = ""
         variables = ""
     else:
@@ -1116,7 +1126,7 @@ def solve(g,
     equations = equilibria_equations(g,
                                      restrict_belief=restrict_belief,
                                      restrict_strategy=restrict_strategy,
-                                     onlynash=not include_sequential,
+                                     include_sequential=include_sequential,
                                      filter=filter,
                                      ed_method=extreme_directions)
     eq_time = time.time()
