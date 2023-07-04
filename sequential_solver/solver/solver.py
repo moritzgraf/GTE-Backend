@@ -64,16 +64,14 @@ def read_ef(filename):
             player = entry[i + 1]
             infoset_lines.append((player, locset))
         elif entry[0] == "param":
-            print("param line")
             g.parameters.append(entry[1])
             eq = line.partition("restrict ")[2]
             if eq != "":
                 g.equations.append(eq)
         elif entry[0] == "restrict":
-            print("restrict line")
             eq = line.partition("restrict ")[2]
             g.equations.append(eq)
-    print("g.equations test: ", g.equations)
+
     for nodeline in node_lines:
         loc, player, _, _, payoff = nodeline
         node = gt.Node()

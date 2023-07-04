@@ -62,7 +62,6 @@ def _worker():
     while True:
         job = _status_queue.get()
         job_type, job_done, value = job
-        print(job)
         if job_type == "add":
             id, state, text, event = value
             _status_dict[id] = (state, text)
