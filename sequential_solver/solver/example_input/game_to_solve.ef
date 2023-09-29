@@ -1,10 +1,14 @@
 player 1 name 1
 player 2 name 2
+player 3 name 3
 level 0 node 1 player 1 
-level 2 node 1 xshift -5.8 from 0,1 move A 
-level 2 node 2 xshift 5.8 from 0,1 move B 
-level 4 node 1 xshift -2.9 from 2,1 move a payoffs 0 0
-level 4 node 2 xshift 2.9 from 2,1 move b payoffs 0 0
-level 4 node 3 xshift -2.9 from 2,2 move a payoffs 0 0
-level 4 node 4 xshift 2.9 from 2,2 move b payoffs 0 0
-iset 2,1 2,2 player 2
+level 4 node 1 xshift -11.02 from 0,1 move D 
+level 2 node 1 player 2 xshift 6.38 from 0,1 move C 
+level 6 node 1 xshift -2.32 from 4,1 move L payoffs 3 3 2
+level 6 node 2 xshift 2.32 from 4,1 move R payoffs 0 0 0
+level 4 node 2 xshift -3.48 from 2,1 move d 
+level 4 node 3 xshift 3.48 from 2,1 move c payoffs x x x
+level 6 node 3 xshift -2.32 from 4,2 move L payoffs 4 4 0
+level 6 node 4 xshift 2.32 from 4,2 move R payoffs 0 0 1
+iset 4,1 4,2 player 3
+param x restrict x > 0

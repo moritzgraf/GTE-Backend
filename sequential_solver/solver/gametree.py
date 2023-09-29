@@ -111,7 +111,7 @@ class Game:
             p += "\n"
 
         any_infoset = True
-        info_str = "Informationsets:\n"
+        info_str = "Information sets:\n"
         for infoset in self.infosets:
             if len(infoset.nodes) < 2:
                 continue

@@ -69,7 +69,7 @@ def solve(id, config, variable_overwrites):
             continue
         solve_time = time.time()
         if g.solutions == "Session Timeout":
-            update_status(id, "Aborted", "Could not connect to WolframKernel.")
+            update_status(id, "Aborted", "Could not connect to Wolfram Kernel.")
         elif g.solutions == "Calculation Timeout":
             update_status(id, "Aborted", "Solving of equations timed out.")
         elif is_alive(id):
@@ -79,7 +79,7 @@ def solve(id, config, variable_overwrites):
             if args["time"]:
                 result += "\n Time to construct equations: " + str(round(eq_time - start_time, 2)) + "s"
                 result += "\n Time to solve equations: " + str(round(solve_time-connect_time, 2)) + "s"
-                result += "\n Total calculation Time: " + str(round((eq_time - start_time) + (solve_time - connect_time), 2)) + "s"
+                result += "\n Total computation Time: " + str(round((eq_time - start_time) + (solve_time - connect_time), 2)) + "s"
                 if args["time"] == "long":
                     result += "\n"
                     result += "\n Time spend waiting in Queue: " + str(round(queue_time - eq_time, 2)) + "s"
