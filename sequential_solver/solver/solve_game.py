@@ -82,9 +82,9 @@ def solve(id, config, variable_overwrites):
                 result += "\n Total computation Time: " + str(round((eq_time - start_time) + (solve_time - connect_time), 2)) + "s"
                 if args["time"] == "long":
                     result += "\n"
-                    result += "\n Time spend waiting in Queue: " + str(round(queue_time - eq_time, 2)) + "s"
-                    result += "\n Time spend connecting to Wolfram: " + str(round(connect_time - queue_time, 2)) + "s"
-                    result += "\n Total time elapsed " + str(round(solve_time - start_time, 2)) + "s"
+                    result += "\n Time spent waiting in Queue: " + str(round(queue_time - eq_time, 2)) + "s"
+                    result += "\n Time spent connecting to Wolfram: " + str(round(connect_time - queue_time, 2)) + "s"
+                    result += "\n Total time elapsed: " + str(round(solve_time - start_time, 2)) + "s"
                     result += "\n"
             update_status(id, "Completed", result)
 
