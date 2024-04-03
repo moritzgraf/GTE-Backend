@@ -16,8 +16,8 @@ from sequential_solver.solver.status_manager import add_status, update_status, i
 WOLFRAM_TIMEOUT = 1 * 60
 EQUATIONS_TIMEOUT = 1 * 60
 WOLFRAM_QUEUE_MAXSIZE = 50
-MAX_VARIABLE_NUMBER = 20
-MAX_CONE_DIMENSION = 20
+MAX_VARIABLE_NUMBER = 15
+MAX_CONE_DIMENSION = 15
 _wolfram_queue = queue.Queue(WOLFRAM_QUEUE_MAXSIZE)
 _wolfram_queue_counter = 0
 _worker_thread = None
@@ -59,7 +59,7 @@ def solve(id, config, variable_overwrites):
             num_variables += len(infoset.actions) - 1    
     cone_dimension = seq_solver.cone_dimension(g)
     if num_variables > MAX_VARIABLE_NUMBER or cone_dimension > MAX_CONE_DIMENSION:
-        update_status(id, "Aborted", "Game is too large to be solved using this method")
+        update_status(id, "Aborted", "Game is too large to be solved using this method.")
         return
     
     update_status(id, "Solving", "Calculating equilibrium equations...")
@@ -92,10 +92,10 @@ def solve(id, config, variable_overwrites):
             if args["time"]:
                 result += "\n Time to construct equations: " + str(round(eq_time - start_time, 2)) + "s"
                 result += "\n Time to solve equations: " + str(round(solve_time-connect_time, 2)) + "s"
-                result += "\n Total computation Time: " + str(round((eq_time - start_time) + (solve_time - connect_time), 2)) + "s"
+                result += "\n Total computation time: " + str(round((eq_time - start_time) + (solve_time - connect_time), 2)) + "s"
                 if args["time"] == "long":
                     result += "\n"
-                    result += "\n Time spent waiting in Queue: " + str(round(queue_time - eq_time, 2)) + "s"
+                    result += "\n Time spent waiting in queue: " + str(round(queue_time - eq_time, 2)) + "s"
                     result += "\n Time spent connecting to Wolfram: " + str(round(connect_time - queue_time, 2)) + "s"
                     result += "\n Total time elapsed: " + str(round(solve_time - start_time, 2)) + "s"
                     result += "\n"
