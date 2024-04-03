@@ -16,6 +16,8 @@ from sequential_solver.solver.status_manager import add_status, update_status, i
 WOLFRAM_TIMEOUT = 1 * 60
 EQUATIONS_TIMEOUT = 1 * 60
 WOLFRAM_QUEUE_MAXSIZE = 50
+MAX_VARIABLE_NUMBER = 20
+MAX_CONE_DIMENSION = 20
 _wolfram_queue = queue.Queue(WOLFRAM_QUEUE_MAXSIZE)
 _wolfram_queue_counter = 0
 _worker_thread = None
@@ -49,6 +51,17 @@ def solve(id, config, variable_overwrites):
             name = split[1].strip()
             g.variable_names[var] = name
     args = _read_config(config)
+    num_variables = 0
+    for infoset in g.infosets:
+        if not infoset.is_chance():
+            # reduced by 1 because of later substitution
+            num_variables += len(infoset.nodes) - 1
+            num_variables += len(infoset.actions) - 1    
+    cone_dimension = seq_solver.cone_dimension(g)
+    if num_variables > MAX_VARIABLE_NUMBER or cone_dimension > MAX_CONE_DIMENSION:
+        update_status(id, "Aborted", "Game is too large to be solved using this method")
+        return
+    
     update_status(id, "Solving", "Calculating equilibrium equations...")
     equations = seq_solver.equilibria_equations(g,
                                                 restrict_belief=args["restrict_belief"],

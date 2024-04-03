@@ -493,6 +493,51 @@ def has_potential(base, ed, i):
 
     return False
 
+def cone_dimension(g):
+    perfect_information = True
+    for infoset in g.infosets:
+        if len(infoset.nodes) > 1:
+            perfect_information = False
+    if perfect_information:
+        return 0    
+    alpha = []
+    gamma = []
+    for infoset in g.infosets:
+        if LOG: print(infoset)
+        if infoset.is_chance():
+            continue
+        for node_pair in itertools.combinations(infoset.nodes, 2):
+            alpha.append(node_pair[0])
+            gamma.append(node_pair[1])
+            if LOG: print("node pair: ", node_pair)
+    n_pairs = len(alpha)
+    j_map = {}
+    n = 0
+    for action in g.actions:
+        alpha.append(action)
+        gamma.append("1")
+        j_map[action] = n
+        n += 1
+    # n = len(g.actions)
+    rows = []
+    for p in range(n_pairs):
+        h1, h2 = alpha[p], gamma[p]
+        if LOG: print(h1, h2)
+        row = [0] * n
+        for a in h1.path:
+            row[j_map[a]] += 1
+        for a in h2.path:
+            row[j_map[a]] += -1
+        rows.append(row)
+        if LOG: print(row)
+    A = np.row_stack(tuple(rows))
+    # if a column of A is zero everywhere, then that column can be removed
+    # as can the corresponding action / 1 in alpha/gamma
+    if LOG: print("shape of A before pruning: ", A.shape)
+    if LOG: print(A)
+    zero_columns = np.where(~A.any(axis=0))[0]
+    A = np.delete(A, zero_columns, axis=1)
+    return A.shape[1]
 
 def equilibria_equations(g, include_sequential, restrict_belief, restrict_strategy, filter, ed_method, ed_timeout=-1):
     variable_map = g.variable_map.copy()  # <Node> : I1N3b, <Action> : I1A2p
